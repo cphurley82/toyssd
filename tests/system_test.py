@@ -15,9 +15,10 @@ class TestSystem(unittest.TestCase):
 
     def test_run_write_read_workload(self):
         """Write some data to storage and read it back."""
-        result = self.system.run_write_read_workload(1)
-        self.assertEqual(result.writes, 1)
-        self.assertEqual(result.reads, 1)
+        result = self.system.env.process(self.system.run_write_read_workload(2))
+        self.system.env.run()
+        self.assertEqual(result.writes, 2)
+        self.assertEqual(result.reads, 2)
         self.assertEqual(result.elapsed_time,
                          (result.writes * 2) + (result.reads * 2))
 

@@ -6,7 +6,7 @@ class Path(object):
 
     def __init__(self, bus):
         self.bus = bus
-        self.store = simpy.Store(bus.env)
+        self.store = simpy.Store(bus.env, capacity=1)
 
     def put(self, value):
         self.bus.put(value, self.store)
