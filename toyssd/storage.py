@@ -1,3 +1,4 @@
+import simpy
 from enum import Enum
 
 
@@ -16,7 +17,7 @@ class Payload(object):
         self.data = data
 
     def __repr__(self):
-        return f"Payload(address={self.address}, data={self.data})"
+        return f"Payload(command={self.command} address={self.address}, data={self.data})"
 
 
 class Storage(object):
@@ -26,10 +27,11 @@ class Storage(object):
         self.env = env
         self.data = {}
         self.storage_bus = None
+        self.process_lock = simpy.Resource(env, capacity=1)
 
     def set_storage_bus(self, bus):
         self.storage_bus = bus
-        self.env.process(self.process())
+        self.env.process(self.process_events())
 
     def evaluate(self, payload):
         """Evaluate a payload."""
@@ -42,8 +44,14 @@ class Storage(object):
 
         return payload
 
-    def process(self):
+    def process_events(self):
         while True:
-            payload = yield self.storage_bus.get_payload_for_storage()
-            self.evaluate(payload)
-            self.storage_bus.end_transaction(payload)
+            payload = yield self.storage_bus.get_payload_event_received_by_storage(
+            )
+            with self.process_lock.request() as request:
+                yield request
+                print(
+                    f'[{self.env.now}] Storage received payload {payload} and will evaluate.'
+                )
+                self.evaluate(payload)
+                self.storage_bus.end_transaction(payload)
