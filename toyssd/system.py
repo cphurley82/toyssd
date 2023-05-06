@@ -1,68 +1,73 @@
 import simpy
 
-from toyssd.host import Host
-from toyssd.storage_bus import StorageBus
 from toyssd.storage import Storage
 
 
-class Result(object):
-    """Information collected from a simulation used for analysis.
-    
-    Attributes:
-        writes: Number of writes performed.
-        reads: Number of reads performed.
-        elapsed_time: Time it took to perform the writes and reads.
+class System(object):
+    """A system has a host which read and writes to a storage device over a 
+    bus.
     """
 
-    def __init__(self, writes=0, reads=0, elapsed_time=0):
-        """Initialize the result with the given values.
-        
-        Args:
-            writes: Initial number of writes performed.
-            reads: Initial number of reads performed.
-            elapsed_time: Initial value for elapsed time.
-        """
-        self.writes = writes
-        self.reads = reads
-        self.elapsed_time = elapsed_time
+    def __init__(self, env):
+        self.env = env
+        self.storage_resource = simpy.Resource(env, capacity=1)
+        self.operations_completed = 0
+        self.next_operation_id = 0
+        self.write_number = 0
+        self.read_number = 0
+        self.drive = Storage(env, 0)
+
+    def run_sequential_write_read(self,
+                                  sequential_writes=1,
+                                  sequential_reads=1):
+
+        while True:
+            for _ in range(sequential_writes):
+                yield self.env.process(
+                    self.writer(id=self.next_operation_id,
+                                address=self.write_number))
+                self.next_operation_id += 1
+                self.write_number += 1
+
+            for _ in range(sequential_reads):
+                yield self.env.process(
+                    self.reader(self.next_operation_id, self.read_number))
+                self.next_operation_id += 1
+                self.read_number += 1
+
+    def writer(self, id, address):
+        self.operations_completed += 1
+        with self.storage_resource.request() as req:
+            yield req
+
+            print(f'id={id} starting write at {self.env.now}')
+            yield self.env.process(
+                self.drive.write(address=address,
+                                 data=f'id={id} address={address}'))
+            print(f'id={id} ending write at {self.env.now}')
+
+    def reader(self, id, address):
+        self.operations_completed += 1
+        with self.storage_resource.request() as req:
+            yield req
+
+            print(f'id={id} starting read at {self.env.now}')
+            data = yield self.env.process(self.drive.read(address))
+            print(f'id={id} ending read at {self.env.now}, data={data}')
+
+    def get_result(self):
+        return {"writes": self.write_number, "reads": self.read_number}
 
 
-class System(object):
-    """Simulates workloads on a storage system and collects results."""
-
-    def __init__(self):
-        """Initialize the system and its simulation environment."""
-        self.env = simpy.Environment()
-        self.storage_bus = StorageBus(self.env)
-        self.host = Host(self.env)
-        self.storage = Storage(self.env)
-
-        # Connect the host and storage to the communication bus.
-        self.host.set_storage_bus(self.storage_bus)
-        self.storage.set_storage_bus(self.storage_bus)
-
-    def run_write_read_workload(self, num_addresses):
-        """Write, read, and repeat for the given number of addresses.
-        
-        Args:
-            num_addresses: Number of addresses to write and read.
-
-        Returns:
-            Result: Information collected from the simulation.
-        """
-        result = Result()
-        for address in range(num_addresses):
-            print(
-                f'[{self.env.now}] System writing address {address} through host.'
-            )
-            yield self.host.write(address)
-            result.writes += 1
-            self.env.run()
-            print(
-                f'[{self.env.now}] System reading address {address} through host.'
-            )
-            yield self.host.read(address)
-            result.reads += 1
-            self.env.run()
-        result.elapsed_time = self.env.now
-        return result
+if __name__ == '__main__':
+    env = simpy.Environment()
+    system = System(env)
+    env.process(
+        system.run_sequential_write_read(sequential_writes=2,
+                                         sequential_reads=3))
+    env.run(until=10)
+    operations_per_second = system.operations_completed / env.now
+    print(
+        f'time={env.now} operations_completed={system.operations_completed} operations_per_second={operations_per_second}'
+    )
+    print('done')

@@ -1,6 +1,7 @@
 import simpy
 
-class Storage(object):
+
+class Drive(object):
 
     def __init__(self, env, id):
         self.env = env
