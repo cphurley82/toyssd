@@ -1,4 +1,4 @@
-# toy-ssd-sim
+# toyssd
 
 A modular, **SystemC/TLM**-based SSD simulator scaffold that integrates with **fio**, uses **GoogleTest** for TDD, and ships with **Docker** + **GitHub Actions CI**.  
 Authored by **Chris Hurley**. Licensed under **MIT**.
@@ -10,25 +10,25 @@ The repo ships with a minimal Ubuntu 24.04 container that builds SystemC, the si
 Build the image:
 
 ```bash
-docker build -t toy-ssd-sim -f Dockerfile .
+docker build -t toyssd -f Dockerfile .
 ```
 
 Run unit tests (filter to project tests to avoid SystemC example tests):
 
 ```bash
-docker run --rm -t toy-ssd-sim -lc "cd build && ctest -R UnitTests --output-on-failure"
+docker run --rm -t toyssd -lc "cd build && ctest -R UnitTests --output-on-failure"
 ```
 
 Run all tests (may include upstream SystemC example tests if present):
 
 ```bash
-docker run --rm -t toy-ssd-sim -lc "cd build && ctest --output-on-failure"
+docker run --rm -t toyssd -lc "cd build && ctest --output-on-failure"
 ```
 
 Run the fio demo (Option A: via CMake target)
 
 ```bash
-docker run --rm -t toy-ssd-sim -lc "cd build && cmake --build . --target run_fio_demo"
+docker run --rm -t toyssd -lc "cd build && cmake --build . --target run_fio_demo"
 ```
 
 This target auto-detects a fio binary bundled from sources during the CMake configure step. If your environment lacks fio, the target will fall back to the bundled one when available.
@@ -37,7 +37,7 @@ Run the fio demo (Option B: manual fio invocation inside the container):
 
 ```bash
 # install fio (one-time in a derived container or an interactive shell)
-docker run -it --rm toy-ssd-sim bash
+docker run -it --rm toyssd bash
 
 # Inside the container (fio is already built from source during CMake)
 cd /workspace/build

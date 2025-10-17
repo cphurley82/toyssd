@@ -6,11 +6,14 @@ add_library(simlib
 )
 
 target_include_directories(simlib PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/../api
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../api>
+  $<INSTALL_INTERFACE:include/toyssd/sim>
+  $<INSTALL_INTERFACE:include/toyssd>
 )
 
 target_link_libraries(simlib PUBLIC systemc)
+set_target_properties(simlib PROPERTIES EXPORT_NAME simlib)
 
 # Provide a standalone SystemC entry-point as a separate executable to avoid
 # pulling sc_main into libraries that are linked by tests.

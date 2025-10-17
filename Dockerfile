@@ -1,5 +1,10 @@
 FROM ubuntu:24.04
 
+LABEL org.opencontainers.image.title="toyssd" \
+	org.opencontainers.image.description="SystemC/TLM-based SSD simulator scaffold integrating with fio and GoogleTest" \
+	org.opencontainers.image.source="https://github.com/cphurley82/toyssd" \
+	org.opencontainers.image.licenses="MIT"
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
 	build-essential cmake git python3 python3-pip python3-venv \
 	clang-format clang-tidy cppcheck pkg-config \

@@ -11,10 +11,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Docker image
         run: |
-          docker build -t toy-ssd-sim -f Dockerfile .
+          docker build -t toyssd -f Dockerfile .
       - name: Run unit tests in Docker (project only)
         run: |
-          docker run --rm -t toy-ssd-sim -lc "cd build && ctest -R UnitTests --output-on-failure"
+          docker run --rm -t toyssd -lc "cd build && ctest -R UnitTests --output-on-failure"
 
   demo:
     runs-on: ubuntu-latest
@@ -23,10 +23,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build Docker image
         run: |
-          docker build -t toy-ssd-sim -f Dockerfile .
+          docker build -t toyssd -f Dockerfile .
       - name: Run short CTest demo and full demo in Docker
         run: |
-          docker run --rm -t toy-ssd-sim -lc "\
+          docker run --rm -t toyssd -lc "\
             cd build && \
             cmake -DTOYSSD_DEMO_TEST=ON -S .. -B . && \
             ctest -R FioDemoShort --output-on-failure && \

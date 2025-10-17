@@ -1,0 +1,6 @@
+# toyssdConfig.cmake - CMake package configuration for toyssd
+
+@PACKAGE_INIT@
+
+# Exported targets
+include("${CMAKE_CURRENT_LIST_DIR}/toyssdTargets.cmake")
