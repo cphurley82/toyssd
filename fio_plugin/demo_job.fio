@@ -1,0 +1,10 @@
+[demo]
+ioengine=./libssdsim.so
+rw=randwrite
+bs=4k
+size=64M
+iodepth=8
+numjobs=1
+runtime=5
+time_based=1
+filename=config/default.json

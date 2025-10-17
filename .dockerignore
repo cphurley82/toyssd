@@ -1,0 +1,17 @@
+# Exclude local build artifacts and VCS data from Docker context
+build/
+build-debug/
+build-copilot/
+**/_deps/
+.vscode/
+.git/
+.gitignore
+*.o
+*.obj
+*.a
+*.so
+*.dylib
+*.dll
+*.pyc
+__pycache__/
+.DS_Store

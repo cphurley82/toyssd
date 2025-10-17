@@ -1,0 +1,17 @@
+{
+  "nand": {
+    "dies": 2,
+    "blocks_per_die": 256,
+    "pages_per_block": 128,
+    "page_size_bytes": 4096,
+    "timing": {
+      "t_read_us": 50,
+      "t_prog_us": 600,
+      "t_erase_us": 3000
+    }
+  },
+  "controller": {
+    "ctrl_overhead_us": 5
+  },
+  "rng_seed": 1337
+}
