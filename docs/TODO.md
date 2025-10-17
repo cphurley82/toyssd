@@ -62,3 +62,37 @@ Notes:
 
 - Current Dockerfile already builds the project and a bundled fio; we’ll keep that for now.
 - Consider a slimmer runtime image in future (two-stage build) to reduce image size.
+
+---
+
+## CI: Run short demo in pipeline
+
+Goal: Exercise the end-to-end fio → engine → simulator path during CI with a very fast smoke, without slowing the pipeline.
+
+Approaches:
+
+- Option A (CTest switch): Enable a tiny demo test during configure and run it via ctest.
+
+   - Configure: `-DTOYSSD_DEMO_TEST=ON`
+   - Execute: `ctest -R FioDemoShort --output-on-failure`
+
+- Option B (Explicit target): Invoke the demo target directly in the workflow.
+
+   - Build then run: `cmake --build . --target run_fio_demo_short -j1`
+
+Notes:
+
+- Both options rely on the bundled fio if a system fio is not present. The CMake logic already builds it when needed.
+- The short demo defaults to 1s runtime and 4M size; it’s designed to be non-flaky and quick.
+
+Tasks:
+
+1) Update CI workflow to add a new step after unit tests that runs either Option A or B in the container build context.
+2) Ensure environment variables for dynamic libs are set by the target (already handled by the CMake target for macOS/Linux).
+3) Keep runtime minimal and mark the step as non-blocking only if flakes are observed (otherwise keep it required).
+
+Acceptance criteria:
+
+- CI runs the short demo on every push/PR.
+- The step finishes in under ~10–20 seconds on typical runners.
+- Failures are surfaced in CI logs with fio output attached.

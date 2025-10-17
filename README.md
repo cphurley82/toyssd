@@ -13,16 +13,22 @@ Build the image:
 docker build -t toyssd -f Dockerfile .
 ```
 
-Run unit tests (filter to project tests to avoid SystemC example tests):
+Run unit tests:
 
 ```bash
 docker run --rm -t toyssd -lc "cd build && ctest -R UnitTests --output-on-failure"
 ```
 
-Run all tests (may include upstream SystemC example tests if present):
+Run all tests (SystemC examples are disabled by default):
 
 ```bash
 docker run --rm -t toyssd -lc "cd build && ctest --output-on-failure"
+```
+
+Run the short 1s demo:
+
+```bash
+docker run --rm -t toyssd -lc "cd build && cmake --build . --target run_fio_demo_short -j1"
 ```
 
 Run the fio demo (Option A: via CMake target)
@@ -36,7 +42,7 @@ This target auto-detects a fio binary bundled from sources during the CMake conf
 Run the fio demo (Option B: manual fio invocation inside the container):
 
 ```bash
-# install fio (one-time in a derived container or an interactive shell)
+# start an interactive shell if you want to explore
 docker run -it --rm toyssd bash
 
 # Inside the container (fio is already built from source during CMake)
@@ -50,7 +56,7 @@ FIO_ENGINE=$(pwd)/libssdsim_engine.so
   --time_based --runtime=5
 ```
 
-Note: If the CMake target fails due to a missing fio binary, use the manual Option B above.
+Note: If the CMake target fails due to a missing fio binary, use the manual Option B above. In the Docker image, a bundled fio is built during image creation, so Option A should work out of the box.
 
 ---
 

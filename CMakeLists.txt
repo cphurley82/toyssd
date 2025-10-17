@@ -30,43 +30,31 @@ option(TOYSSD_BUILD_FIO_ENGINE "Build bundled fio external ioengine" ON)
 option(TOYSSD_BUILD_DEMOS "Add demo custom targets that run fio with the engine" ON)
 # BUILD_TESTING comes from CTest; keep ON by default but gate our tests under it.
 
-# GoogleTest
-FetchContent_Declare(
-  googletest
-  GIT_REPOSITORY https://github.com/google/googletest.git
-  GIT_TAG v1.14.0
-)
-set(INSTALL_GTEST OFF)
-FetchContent_MakeAvailable(googletest)
+# GoogleTest (only when testing is enabled)
+if(BUILD_TESTING)
+  FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG v1.17.0
+  )
+  set(INSTALL_GTEST OFF)
+  FetchContent_MakeAvailable(googletest)
+endif()
 
-# SystemC
-# Try hard to prevent SystemC from registering its example tests with CTest.
-# Different versions use different switches, so set a few common ones.
-set(CMAKE_DISABLE_TESTING ON  CACHE BOOL "Disable testing in subprojects" FORCE)
-set(BUILD_TESTING         OFF CACHE BOOL "Disable tests during SystemC configure" FORCE)
-set(SYSTEMC_BUILD_EXAMPLES    OFF CACHE BOOL "Disable SystemC examples" FORCE)
-set(SystemC_BUILD_EXAMPLES    OFF CACHE BOOL "Disable SystemC examples" FORCE)
-set(SYSTEMC_ENABLE_EXAMPLES   OFF CACHE BOOL "Disable SystemC examples" FORCE)
+# SystemC (3.0.1+)
+# Disable building examples/regression in the subproject cleanly.
+set(ENABLE_EXAMPLES   OFF CACHE BOOL "Disable SystemC examples" FORCE)
+set(ENABLE_REGRESSION OFF CACHE BOOL "Disable SystemC regression tests" FORCE)
 FetchContent_Declare(
   systemc
   GIT_REPOSITORY https://github.com/accellera-official/systemc.git
-  GIT_TAG 2.3.3
+  GIT_TAG 3.0.1
 )
 set(SYSTEMC_BUILD_TYPE ${CMAKE_BUILD_TYPE})
 set(SystemC_CXX_STANDARD 20 CACHE STRING "SystemC C++ standard")
 FetchContent_MakeAvailable(systemc)
-# Re-enable testing for this project (our tests)
-set(CMAKE_DISABLE_TESTING OFF CACHE BOOL "Disable testing in subprojects" FORCE)
-set(BUILD_TESTING         ON  CACHE BOOL "Enable tests for this project" FORCE)
 
 # fio (headers only for external ioengine build)
-FetchContent_Declare(
-  fio
-  GIT_REPOSITORY https://github.com/axboe/fio.git
-  GIT_TAG fio-3.36
-)
-FetchContent_MakeAvailable(fio)
-set(FIO_INCLUDE_DIR ${fio_SOURCE_DIR})
 
 ############################
 # Subprojects / Targets    #
@@ -100,6 +88,14 @@ endif()
 # fio external ioengine + demos (opt)  #
 ########################################
 if(TOYSSD_BUILD_FIO_ENGINE)
+  # Fetch fio headers needed to build the external ioengine
+  FetchContent_Declare(
+    fio
+    GIT_REPOSITORY https://github.com/axboe/fio.git
+    GIT_TAG fio-3.36
+  )
+  FetchContent_MakeAvailable(fio)
+  set(FIO_INCLUDE_DIR ${fio_SOURCE_DIR})
   # Build fio external ioengine module that will dlopen libssdsim at runtime
   add_library(ssdsim_engine MODULE fio_plugin/ssdsim_engine.c)
   target_include_directories(ssdsim_engine PRIVATE ${FIO_INCLUDE_DIR})
