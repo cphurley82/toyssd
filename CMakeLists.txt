@@ -73,10 +73,14 @@ set_target_properties(ssdsim_engine PROPERTIES OUTPUT_NAME ssdsim_engine)
 # Tests
 add_test(NAME UnitTests COMMAND unit_tests)
 
-# Demo target
+# Demo target (prefers system 'fio' if present)
 set(DEMO_CONFIG ${CMAKE_SOURCE_DIR}/config/default.json)
+find_program(FIO_EXE NAMES fio)
+if(NOT FIO_EXE)
+  set(FIO_EXE ${fio_SOURCE_DIR}/fio)
+endif()
 add_custom_target(run_fio_demo
-  COMMAND ${fio_SOURCE_DIR}/fio
+  COMMAND ${FIO_EXE}
     --ioengine=external:$<TARGET_FILE:ssdsim_engine>
     --filename=${DEMO_CONFIG}
     --name=demo
