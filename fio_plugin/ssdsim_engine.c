@@ -30,6 +30,10 @@ struct ssd_cpl_t {
 
 struct ssdsim_state {
     void* handle;
+    // Hold io_u pointers for completions between getevents() and event()
+    struct io_u **events;
+    unsigned int nr_events;
+    unsigned int queued;
 };
 
 static int ssdsim_init(struct thread_data *td)
@@ -53,6 +57,12 @@ static int ssdsim_init(struct thread_data *td)
 
     if (!p_init || !p_submit || !p_poll || !p_shutdown) return 1;
 
+    // Allocate an events buffer sized to iodepth
+    if (td->o.iodepth < 1)
+        td->o.iodepth = 1;
+    st->events = calloc(td->o.iodepth, sizeof(struct io_u*));
+    st->nr_events = 0;
+
     // fio >= 3.x keeps options under td->o
     const char* cfg = td->o.filename ? td->o.filename : "config/default.json";
     return p_init(cfg);
@@ -69,45 +79,88 @@ static enum fio_q_status ssdsim_queue(struct thread_data *td, struct io_u *io)
     };
     int rc = p_submit(&req);
     if (rc) return FIO_Q_BUSY;
+    // Track queued IOs so commit() can mark submit
+    struct ssdsim_state *st = (struct ssdsim_state*)td->io_ops_data;
+    if (st) st->queued++;
     return FIO_Q_QUEUED;
 }
 
 static int ssdsim_getevents(struct thread_data *td, unsigned int min, unsigned int max, const struct timespec *t)
 {
+    struct ssdsim_state *st = (struct ssdsim_state*)td->io_ops_data;
+    (void)min; (void)t;
+    if (!st) return 0;
+
+    // Cap to our buffer size
+    if (max > td->o.iodepth)
+        max = td->o.iodepth;
+
     struct ssd_cpl_t comps[256];
+    if (max > 256) max = 256;
+
     int n = p_poll((int)max, comps);
-    for (int i=0; i<n; ++i) {
+    if (n < 0) n = 0;
+    st->nr_events = (unsigned int)n;
+    for (int i = 0; i < n; ++i) {
         struct io_u *io = (struct io_u*)comps[i].user_tag;
         io->error = 0;
         io->resid = 0;
-        io_u_mark_complete(td, io->index);
+        st->events[i] = io;
     }
     return n;
 }
 
+// Return the io_u for the given event index populated by getevents()
+static struct io_u* ssdsim_event(struct thread_data *td, int event)
+{
+    struct ssdsim_state *st = (struct ssdsim_state*)td->io_ops_data;
+    if (!st || (unsigned int)event >= st->nr_events)
+        return NULL;
+    return st->events[event];
+}
+
 static int ssdsim_commit(struct thread_data *td)
 {
+    struct ssdsim_state *st = (struct ssdsim_state*)td->io_ops_data;
+    if (st && st->queued) {
+        // Inform fio that queued IOs have been submitted asynchronously
+        io_u_mark_submit(td, st->queued);
+        st->queued = 0;
+    }
+    return 0;
+}
+
+// fio asserts open_file is present even for DISKLESSIO engines; just succeed.
+static int ssdsim_open_file(struct thread_data *td, struct fio_file *f)
+{
+    (void)td; (void)f;
     return 0;
 }
 
 static void ssdsim_cleanup(struct thread_data *td)
 {
+    struct ssdsim_state *st = (struct ssdsim_state*)td->io_ops_data;
     if (p_shutdown) p_shutdown();
-    if (td->io_ops_data) free(td->io_ops_data);
+    if (st) {
+        free(st->events);
+        free(st);
+    }
 }
 
-static struct ioengine_ops ioengine_ssdsim = {
+struct ioengine_ops ioengine = {
     .name       = "ssdsim",
     .version    = FIO_IOOPS_VERSION,
     .flags      = FIO_DISKLESSIO,
     .init       = ssdsim_init,
     .queue      = ssdsim_queue,
     .getevents  = ssdsim_getevents,
+    .event      = ssdsim_event,
     .commit     = ssdsim_commit,
+    .open_file  = ssdsim_open_file,
     .cleanup    = ssdsim_cleanup,
 };
 
-static void fio_init ssdsim_register(void)
-{
-    register_ioengine(&ioengine_ssdsim);
+// External ioengine entry point expected by fio when loading modules.
+struct ioengine_ops* get_ioengine(void) {
+    return &ioengine;
 }

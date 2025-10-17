@@ -21,7 +21,11 @@ ENV PATH="/opt/venv/bin:${PATH}"
 # Remove any pre-existing host build artifacts that may have been copied in
 RUN rm -rf build build-debug build-copilot
 
-# Configure and build the project
-RUN mkdir -p build && cd build && cmake .. && make -j$(nproc)
+# Configure and build the project, then build a matching fio from fetched sources
+RUN mkdir -p build \
+ && cd build \
+ && cmake .. \
+ && make -j$(nproc) \
+ && make -C _deps/fio-src -j$(nproc)
 
 ENTRYPOINT ["/bin/bash"]

@@ -24,6 +24,11 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t toy-ssd-sim -f Dockerfile .
-      - name: Run fio demo in Docker
+      - name: Run short CTest demo and full demo in Docker
         run: |
-          docker run --rm -t toy-ssd-sim -lc "cd build && FIO_ENGINE=\$(pwd)/fio_plugin/libssdsim_engine.so fio --ioengine=external:\${FIO_ENGINE} --filename=/workspace/config/default.json --name=demo --rw=randwrite --size=64M --bs=4k --iodepth=8 --numjobs=1 --time_based --runtime=5"
+          docker run --rm -t toy-ssd-sim -lc "\
+            cd build && \
+            cmake -DTOYSSD_DEMO_TEST=ON -S .. -B . && \
+            ctest -R FioDemoShort --output-on-failure && \
+            cmake --build . --target run_fio_demo -j1\
+          "

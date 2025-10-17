@@ -22,6 +22,16 @@ date: 2025-10-16
 11. [Next Steps](#next-steps)
 12. [Appendix: Key Dependencies](#appendix-key-dependencies)
 
+---
+
+## Current Status
+
+- Build system stabilized with CMake (C++20), SystemC/TLM, and GoogleTest.
+- Docker image provides reproducible builds and test runs; CI (GitHub Actions) runs unit tests plus two demos inside Docker: a short ctest-based smoke (`FioDemoShort`, enabled via `TOYSSD_DEMO_TEST=ON`) and the longer parameterized CMake target (`run_fio_demo`).
+- fio external ioengine (`ssdsim_engine`) is wired to `libssdsim` and produces completions against a stubbed SystemC pipeline.
+- A CMake demo target is available: `run_fio_demo` (also aliased as `demo`) which runs fio with the external engine and a sample config.
+- Progress through Phases 0–1: ioengine stub + HostInterface/Firmware scaffold with fixed-latency completions. NAND/FTL work is upcoming.
+
 
 ---
 

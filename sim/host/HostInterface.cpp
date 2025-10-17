@@ -42,7 +42,9 @@ namespace ssdsim_internal {
       simctx.reset(new sc_simcontext());
       // Construct a Top in this translation unit (defined in sim/main.cpp)
     auto* top = ssdsim_internal::create_top(&g_host);
-      // don't start an infinite loop; simulation advances on poll
+            // End of elaboration and initialize delta cycles
+            sc_start(SC_ZERO_TIME);
+            // don't start an infinite loop; simulation advances on poll
       return 0;
   }
 
@@ -53,8 +55,21 @@ namespace ssdsim_internal {
   }
 
     int poll_cxx(int max_cpls, ssd_cpl_t* out_cpls) {
-      if (!g_host) return 0;
-      return g_host->poll(max_cpls, out_cpls);
+            if (!g_host) return 0;
+            // Try to advance simulation in small quanta until we have at least one completion
+            // or we hit a small number of iterations to avoid blocking.
+            int total = 0;
+            for (int iter = 0; iter < 100 && total < max_cpls; ++iter) {
+                // Advance simulation time by a small amount; adjust as needed
+                sc_start(sc_time(10, SC_US));
+                // Drain completions from firmware
+                int n = g_host->poll(max_cpls - total, out_cpls + total);
+                if (n > 0) {
+                    total += n;
+                    // continue loop to try to fill up to max_cpls
+                }
+            }
+            return total;
   }
 
   void shutdown_cxx() {

@@ -73,25 +73,69 @@ set_target_properties(ssdsim_engine PROPERTIES OUTPUT_NAME ssdsim_engine)
 # Tests
 add_test(NAME UnitTests COMMAND unit_tests)
 
-# Demo target (prefers system 'fio' if present)
-set(DEMO_CONFIG ${CMAKE_SOURCE_DIR}/config/default.json)
-find_program(FIO_EXE NAMES fio)
-if(NOT FIO_EXE)
-  set(FIO_EXE ${fio_SOURCE_DIR}/fio)
+# Demo configuration and target (prefers system 'fio' if present, otherwise the fetched source build)
+set(DEMO_CONFIG    ${CMAKE_SOURCE_DIR}/config/default.json CACHE STRING "Path to JSON config for demo")
+set(DEMO_RW        randwrite                         CACHE STRING "fio rw mode (read, write, randread, randwrite, etc.)")
+set(DEMO_SIZE      64M                               CACHE STRING "Total IO size for the demo")
+set(DEMO_BS        4k                                CACHE STRING "Block size for the demo")
+set(DEMO_IODEPTH   8                                 CACHE STRING "iodepth for the demo")
+set(DEMO_NUMJOBS   1                                 CACHE STRING "numjobs for the demo")
+set(DEMO_RUNTIME_S 5                                 CACHE STRING "Runtime (seconds) for the demo when time_based is used")
+
+# Allow overriding fio executable path if desired
+set(FIO_EXE_OVERRIDE "" CACHE FILEPATH "Override path to fio binary; if empty, auto-detect")
+
+if(FIO_EXE_OVERRIDE)
+  set(FIO_EXE ${FIO_EXE_OVERRIDE})
+else()
+  find_program(FIO_EXE NAMES fio)
+  if(NOT FIO_EXE)
+    # Try the fetched source tree (built in-source in our Dockerfile)
+    set(FIO_EXE ${fio_SOURCE_DIR}/fio)
+  endif()
 endif()
+
+if(NOT EXISTS ${FIO_EXE})
+  message(WARNING "fio executable not found at '${FIO_EXE}'. The demo target may fail unless fio is available in PATH.")
+endif()
+
 add_custom_target(run_fio_demo
   COMMAND ${FIO_EXE}
     --ioengine=external:$<TARGET_FILE:ssdsim_engine>
     --filename=${DEMO_CONFIG}
     --name=demo
-    --rw=randwrite
-    --size=64M
-    --bs=4k
-    --iodepth=8
-    --numjobs=1
+    --rw=${DEMO_RW}
+    --size=${DEMO_SIZE}
+    --bs=${DEMO_BS}
+    --iodepth=${DEMO_IODEPTH}
+    --numjobs=${DEMO_NUMJOBS}
     --time_based
-    --runtime=5
+    --runtime=${DEMO_RUNTIME_S}
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   COMMENT "Running fio demo with simulated SSD"
 )
 add_dependencies(run_fio_demo ssdsim ssdsim_engine)
+
+# Convenience alias target
+add_custom_target(demo DEPENDS run_fio_demo)
+
+# Optional: add a very short demo as a CTest (disabled by default)
+# Enable this to register a 1s, 4M smoke test named 'FioDemoShort'.
+# Run it with: ctest -R FioDemoShort --output-on-failure
+option(TOYSSD_DEMO_TEST "Enable short ctest demo 'FioDemoShort' (1s, 4M). Run with: ctest -R FioDemoShort --output-on-failure" OFF)
+if(TOYSSD_DEMO_TEST)
+  message(STATUS "TOYSSD_DEMO_TEST=ON: Registering 'FioDemoShort' (1s, 4M). Run: ctest -R FioDemoShort --output-on-failure")
+  add_test(NAME FioDemoShort
+           COMMAND ${FIO_EXE}
+             --ioengine=external:$<TARGET_FILE:ssdsim_engine>
+             --filename=${DEMO_CONFIG}
+             --name=demo_short
+             --rw=${DEMO_RW}
+             --size=4M
+             --bs=${DEMO_BS}
+             --iodepth=${DEMO_IODEPTH}
+             --numjobs=1
+             --time_based
+             --runtime=1
+           WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+endif()
