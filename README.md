@@ -61,6 +61,7 @@ Prerequisites:
 - Xcode Command Line Tools (or Xcode): `xcode-select --install`
 - CMake 3.16+ and Git (e.g., via Homebrew: `brew install cmake git`)
 - Optional: fio (for the demo): `brew install fio`
+  - Not required: if not installed, the build will use a bundled fio (built from sources) by default.
 
 Build (Release):
 
@@ -88,11 +89,14 @@ Run only the project tests if you see upstream example tests in the list:
 Run the fio demo (requires fio installed, or use the bundled fio with CMake variable override):
 
 ```bash
-# Option A: Use CMake demo target and let it auto-detect bundled fio
+# Option A: Use CMake demo target and let it auto-detect (or auto-build) bundled fio
 cmake --build build --target run_fio_demo -j1
 
-# Option B: Manual run using system fio
+# Option B: Manual run using system fio (set env for macOS)
+# From the repo root:
 ENGINE=$(pwd)/build/libssdsim_engine.so
+export SSD_SIM_LIB_PATH="$(pwd)/build/libssdsim.dylib"
+export DYLD_LIBRARY_PATH="$(pwd)/build:$(pwd)/build/_deps/systemc-build/src"
 fio \
   --ioengine=external:"${ENGINE}" \
   --filename=$(pwd)/config/default.json \
@@ -117,6 +121,13 @@ You can tweak the CMake demo target via cache variables at configure time (or by
 - DEMO_NUMJOBS: number of jobs (e.g., `1`)
 - DEMO_RUNTIME_S: runtime in seconds (e.g., `5`)
 - FIO_EXE_OVERRIDE: full path to a specific fio binary (otherwise the build will try a system fio or bundled source-built one)
+- BUILD_BUNDLED_FIO: ON by default; builds and uses the bundled fio if no system fio is found.
+
+Notes on macOS:
+
+- The CMake `run_fio_demo` target automatically sets SSD_SIM_LIB_PATH and DYLD_LIBRARY_PATH so the fio engine can find `libssdsim` and SystemC.
+- For manual runs, set SSD_SIM_LIB_PATH and DYLD_LIBRARY_PATH as shown above.
+
 
 Examples:
 

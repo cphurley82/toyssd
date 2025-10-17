@@ -52,7 +52,7 @@ add_subdirectory(sim)
 add_subdirectory(tests)
 
 # Core simulator shared library
-add_library(ssdsim SHARED api/ssdsim_api.cpp)
+add_library(ssdsim SHARED api/ssdsim_api.cpp api/sc_main_stub.cpp)
 target_include_directories(ssdsim PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/api)
 target_link_libraries(ssdsim PRIVATE simlib systemc)
 install(TARGETS ssdsim)
@@ -84,23 +84,44 @@ set(DEMO_RUNTIME_S 5                                 CACHE STRING "Runtime (seco
 
 # Allow overriding fio executable path if desired
 set(FIO_EXE_OVERRIDE "" CACHE FILEPATH "Override path to fio binary; if empty, auto-detect")
+option(BUILD_BUNDLED_FIO "Build bundled fio from fetched sources if no system fio is found" ON)
 
+set(HAVE_SYSTEM_FIO OFF)
 if(FIO_EXE_OVERRIDE)
   set(FIO_EXE ${FIO_EXE_OVERRIDE})
+  set(HAVE_SYSTEM_FIO ON)
 else()
   find_program(FIO_EXE NAMES fio)
-  if(NOT FIO_EXE)
-    # Try the fetched source tree (built in-source in our Dockerfile)
+  if(FIO_EXE)
+    set(HAVE_SYSTEM_FIO ON)
+  else()
+    # Fallback to the fetched source tree; we can build it if requested.
     set(FIO_EXE ${fio_SOURCE_DIR}/fio)
+    if(BUILD_BUNDLED_FIO)
+      message(STATUS "No system 'fio' found. BUILD_BUNDLED_FIO=ON: will use bundled fio at ${FIO_EXE} (built from sources).")
+      # Build fio using its Makefile in the source tree.
+      add_custom_target(fio_bundled
+        COMMAND ${CMAKE_COMMAND} -E env PATH=$ENV{PATH} make -j
+        WORKING_DIRECTORY ${fio_SOURCE_DIR}
+        COMMENT "Building bundled fio from fetched sources")
+    else()
+      message(STATUS "No system 'fio' found and BUILD_BUNDLED_FIO=OFF. You may need to set FIO_EXE_OVERRIDE or install fio.")
+    endif()
   endif()
 endif()
 
 if(NOT EXISTS ${FIO_EXE})
-  message(WARNING "fio executable not found at '${FIO_EXE}'. The demo target may fail unless fio is available in PATH.")
+  message(WARNING "fio executable not found at '${FIO_EXE}'. The demo target may fail unless fio is available in PATH or bundled fio is built.")
 endif()
 
 add_custom_target(run_fio_demo
-  COMMAND ${FIO_EXE}
+  COMMAND
+    ${CMAKE_COMMAND} -E env
+      SSD_SIM_LIB_PATH=$<TARGET_FILE:ssdsim>
+      $<$<PLATFORM_ID:Darwin>:DYLD_LIBRARY_PATH=$<TARGET_FILE_DIR:ssdsim>:$<TARGET_FILE_DIR:systemc>>
+          $<$<NOT:$<PLATFORM_ID:Darwin>>:LD_LIBRARY_PATH=$<TARGET_FILE_DIR:ssdsim>:$<TARGET_FILE_DIR:systemc>>
+        $<$<NOT:$<PLATFORM_ID:Darwin>>:LD_PRELOAD=$<TARGET_FILE:scmain_stub>>
+      ${FIO_EXE}
     --ioengine=external:$<TARGET_FILE:ssdsim_engine>
     --filename=${DEMO_CONFIG}
     --name=demo
@@ -114,10 +135,44 @@ add_custom_target(run_fio_demo
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   COMMENT "Running fio demo with simulated SSD"
 )
-add_dependencies(run_fio_demo ssdsim ssdsim_engine)
+add_dependencies(run_fio_demo ssdsim ssdsim_engine scmain_stub)
+if(NOT HAVE_SYSTEM_FIO AND BUILD_BUNDLED_FIO)
+  add_dependencies(run_fio_demo fio_bundled)
+endif()
 
 # Convenience alias target
 add_custom_target(demo DEPENDS run_fio_demo)
+
+# Provide a standalone sc_main stub library (useful for LD_PRELOAD on Linux)
+add_library(scmain_stub SHARED api/sc_main_stub.cpp)
+set_target_properties(scmain_stub PROPERTIES OUTPUT_NAME scmain_stub)
+
+# Short demo target for quick smoke (1s, 4M)
+add_custom_target(run_fio_demo_short
+  COMMAND
+    ${CMAKE_COMMAND} -E env
+      SSD_SIM_LIB_PATH=$<TARGET_FILE:ssdsim>
+      $<$<PLATFORM_ID:Darwin>:DYLD_LIBRARY_PATH=$<TARGET_FILE_DIR:ssdsim>:$<TARGET_FILE_DIR:systemc>>
+      $<$<NOT:$<PLATFORM_ID:Darwin>>:LD_LIBRARY_PATH=$<TARGET_FILE_DIR:ssdsim>:$<TARGET_FILE_DIR:systemc>>
+          $<$<NOT:$<PLATFORM_ID:Darwin>>:LD_PRELOAD=$<TARGET_FILE:scmain_stub>>
+      ${FIO_EXE}
+    --ioengine=external:$<TARGET_FILE:ssdsim_engine>
+    --filename=${DEMO_CONFIG}
+    --name=demo_short
+    --rw=${DEMO_RW}
+    --size=4M
+    --bs=${DEMO_BS}
+    --iodepth=${DEMO_IODEPTH}
+    --numjobs=1
+    --time_based
+    --runtime=1
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  COMMENT "Running short fio demo (1s, 4M) with simulated SSD"
+)
+add_dependencies(run_fio_demo_short ssdsim ssdsim_engine scmain_stub)
+if(NOT HAVE_SYSTEM_FIO AND BUILD_BUNDLED_FIO)
+  add_dependencies(run_fio_demo_short fio_bundled)
+endif()
 
 # Optional: add a very short demo as a CTest (disabled by default)
 # Enable this to register a 1s, 4M smoke test named 'FioDemoShort'.
@@ -126,16 +181,6 @@ option(TOYSSD_DEMO_TEST "Enable short ctest demo 'FioDemoShort' (1s, 4M). Run wi
 if(TOYSSD_DEMO_TEST)
   message(STATUS "TOYSSD_DEMO_TEST=ON: Registering 'FioDemoShort' (1s, 4M). Run: ctest -R FioDemoShort --output-on-failure")
   add_test(NAME FioDemoShort
-           COMMAND ${FIO_EXE}
-             --ioengine=external:$<TARGET_FILE:ssdsim_engine>
-             --filename=${DEMO_CONFIG}
-             --name=demo_short
-             --rw=${DEMO_RW}
-             --size=4M
-             --bs=${DEMO_BS}
-             --iodepth=${DEMO_IODEPTH}
-             --numjobs=1
-             --time_based
-             --runtime=1
+           COMMAND ${CMAKE_COMMAND} --build . --target run_fio_demo_short -j1
            WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 endif()

@@ -2,6 +2,7 @@
 #include "fio.h"
 #include <dlfcn.h>
 #include <string.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 typedef int (*fn_init_t)(const char*);
@@ -41,21 +42,29 @@ static int ssdsim_init(struct thread_data *td)
     struct ssdsim_state *st = calloc(1, sizeof(*st));
     td->io_ops_data = st;
 
-    const char* libname =
+    const char* override = getenv("SSD_SIM_LIB_PATH");
+    const char* libname = override ? override :
 #ifdef __APPLE__
     "./libssdsim.dylib";
 #else
     "./libssdsim.so";
 #endif
-    st->handle = dlopen(libname, RTLD_LAZY);
-    if (!st->handle) return 1;
+    st->handle = dlopen(libname, RTLD_LAZY | RTLD_GLOBAL);
+    if (!st->handle) {
+        fprintf(stderr, "ssdsim_engine: dlopen(%s) failed: %s\n", libname, dlerror());
+        return 1;
+    }
 
     p_init     = (fn_init_t)dlsym(st->handle, "ssdsim_init");
     p_submit   = (fn_submit_t)dlsym(st->handle, "ssdsim_submit");
     p_poll     = (fn_poll_t)dlsym(st->handle, "ssdsim_poll");
     p_shutdown = (fn_shutdown_t)dlsym(st->handle, "ssdsim_shutdown");
 
-    if (!p_init || !p_submit || !p_poll || !p_shutdown) return 1;
+    if (!p_init || !p_submit || !p_poll || !p_shutdown) {
+        fprintf(stderr, "ssdsim_engine: dlsym missing: init=%p submit=%p poll=%p shutdown=%p\n",
+                (void*)p_init, (void*)p_submit, (void*)p_poll, (void*)p_shutdown);
+        return 1;
+    }
 
     // Allocate an events buffer sized to iodepth
     if (td->o.iodepth < 1)
