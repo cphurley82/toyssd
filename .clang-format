@@ -1,0 +1,9 @@
+BasedOnStyle: Google
+
+---
+Language: Cpp
+BasedOnStyle: Google
+
+---
+Language: C
+BasedOnStyle: Google

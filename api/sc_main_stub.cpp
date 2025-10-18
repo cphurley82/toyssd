@@ -10,6 +10,6 @@ extern "C" {
 __attribute__((visibility("default")))
 #endif
 int sc_main(int, char**) {
-    return 0;
+  return 0;
 }
 }

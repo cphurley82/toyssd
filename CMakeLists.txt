@@ -25,6 +25,47 @@ include(FetchContent)
 include(GNUInstallDirs) # install path helpers
 include(CTest)          # provides BUILD_TESTING option
 
+# Optional: clang-format integration
+find_program(CLANG_FORMAT_EXE NAMES clang-format clang-format-18 clang-format-17)
+if(CLANG_FORMAT_EXE)
+  message(STATUS "Found clang-format: ${CLANG_FORMAT_EXE}")
+  file(GLOB_RECURSE TOYSSD_FORMAT_SOURCES
+    CONFIGURE_DEPENDS
+    ${CMAKE_SOURCE_DIR}/api/*.[ch]pp
+    ${CMAKE_SOURCE_DIR}/api/*.[ch]
+    ${CMAKE_SOURCE_DIR}/sim/*.[ch]pp
+    ${CMAKE_SOURCE_DIR}/sim/*.[ch]
+    ${CMAKE_SOURCE_DIR}/tests/*.[ch]pp
+    ${CMAKE_SOURCE_DIR}/tests/*.[ch]
+    ${CMAKE_SOURCE_DIR}/fio_plugin/*.[ch]
+  )
+  # Exclude anything under build or _deps just in case
+  list(FILTER TOYSSD_FORMAT_SOURCES EXCLUDE REGEX ".*/build[^/]*/.*")
+  list(FILTER TOYSSD_FORMAT_SOURCES EXCLUDE REGEX ".*/_deps/.*")
+
+  add_custom_target(format
+    COMMAND ${CLANG_FORMAT_EXE} -i ${TOYSSD_FORMAT_SOURCES}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Formatting C/C++ sources with clang-format"
+  )
+
+  add_custom_target(format-check
+    COMMAND ${CLANG_FORMAT_EXE} --dry-run --Werror ${TOYSSD_FORMAT_SOURCES}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMENT "Checking C/C++ formatting (clang-format)"
+  )
+else()
+  # Provide no-op targets so other targets can depend on 'format' unconditionally
+  add_custom_target(format
+    COMMAND ${CMAKE_COMMAND} -E echo "clang-format not found: skipping formatting"
+  )
+  add_custom_target(format-check
+    COMMAND ${CMAKE_COMMAND} -E echo "clang-format not found: skipping format check"
+  )
+endif()
+
+# (format dependencies are added after targets are defined below)
+
 # Build toggles (all default ON to preserve current behavior)
 option(TOYSSD_BUILD_FIO_ENGINE "Build bundled fio external ioengine" ON)
 option(TOYSSD_BUILD_DEMOS "Add demo custom targets that run fio with the engine" ON)
@@ -75,6 +116,15 @@ set_target_properties(ssdsim PROPERTIES EXPORT_NAME ssdsim)
 # Provide a standalone sc_main stub library (useful for LD_PRELOAD on Linux)
 add_library(scmain_stub SHARED api/sc_main_stub.cpp)
 set_target_properties(scmain_stub PROPERTIES OUTPUT_NAME scmain_stub)
+
+# Ensure main targets trigger formatting before building (only if targets exist)
+if(TARGET format)
+  foreach(_t IN ITEMS simlib ssdsim scmain_stub)
+    if(TARGET ${_t})
+      add_dependencies(${_t} format)
+    endif()
+  endforeach()
+endif()
 
 ########################################
 # Tests (only if BUILD_TESTING is ON)  #

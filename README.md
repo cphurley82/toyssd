@@ -1,5 +1,7 @@
 # toyssd
 
+[![Formatting (clang-format)](https://github.com/cphurley82/toyssd/actions/workflows/format.yml/badge.svg)](https://github.com/cphurley82/toyssd/actions/workflows/format.yml)
+
 A modular, **SystemC/TLM**-based SSD simulator scaffold that integrates with **fio**, uses **GoogleTest** for TDD, and ships with **Docker** + **GitHub Actions CI**.  
 Authored by **Chris Hurley**. Licensed under **MIT**.
 
@@ -68,6 +70,33 @@ Prerequisites:
 - CMake 3.16+ and Git (e.g., via Homebrew: `brew install cmake git`)
 - Optional: fio (for the demo): `brew install fio`
   - Not required: if not installed, the build will use a bundled fio (built from sources) by default.
+
+### Install prerequisites via Homebrew
+
+```bash
+# Ensure Homebrew is up to date
+brew update
+
+# Required
+brew install cmake git clang-format
+
+# Optional but recommended for dev workflow
+brew install ninja ccache clang-tidy cppcheck
+
+# Optional: fio for manual demo runs (build uses bundled fio if not found)
+brew install fio
+
+# Optional: Python for tools (if your system Python is missing modules)
+brew install python
+
+# Verify clang-format is on PATH and recognized by CMake
+clang-format --version
+```
+
+Notes:
+
+- If `clang-format` is installed, the build will auto-format sources before compiling. If it isn’t, formatting is skipped with a message and the build proceeds.
+- You can switch to Ninja by configuring with `-G Ninja`; otherwise, Unix Makefiles are fine on macOS.
 
 Build (Release):
 
@@ -176,3 +205,46 @@ CI runs both: it enables `TOYSSD_DEMO_TEST=ON` to run `FioDemoShort`, then build
 - `.github/workflows/` — CI pipeline
 
 See `docs/toy_ssd_simulator_design.md` for full design details.
+
+## Code formatting (clang-format)
+
+This repo uses clang-format with the Google C++ Style Guide and C++20.
+
+- Config: `.clang-format` at the repo root (BasedOnStyle: Google, ColumnLimit: 80, Cpp20)
+- Editor: VS Code formats on save for C/C++ (`.vscode/settings.json`)
+- CI: Formatting workflow runs on PRs and pushes to `main` and fails on style violations (badge above)
+- CMake: Building core targets auto-runs formatting first (targets depend on `format`)
+
+### Run formatting locally
+
+Option A — via CMake targets (recommended):
+
+```bash
+# Configure once (Debug or Release)
+cmake -S . -B build
+
+# Format all tracked C/C++ sources in-place
+cmake --build build --target format
+
+# Verify formatting without changing files (fails on diffs)
+cmake --build build --target format-check
+```
+
+Option B — directly with clang-format:
+
+```bash
+# Show version
+clang-format --version
+
+# Format in-place (tracked files only; skips build artifacts and deps)
+git ls-files '**/*.[ch]' '**/*.[ch]pp' ':!:build*/*' ':!:_deps/*' | xargs -r clang-format -i
+
+# Check for diffs (non-zero exit on violations)
+git ls-files '**/*.[ch]' '**/*.[ch]pp' ':!:build*/*' ':!:_deps/*' | xargs -r clang-format --dry-run --Werror
+```
+
+Notes:
+
+- If `clang-format` isn’t installed, CMake’s `format`/`format-check` targets become no-ops and print a hint.
+- On macOS, install via Homebrew: `brew install clang-format`.
+- The build also depends on `format`, so running `cmake --build` will format sources automatically when `clang-format` is available.

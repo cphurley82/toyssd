@@ -1,0 +1,33 @@
+name: Formatting (clang-format)
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format
+
+      - name: List C/C++ files
+        id: list
+        shell: bash
+        run: |
+          mapfile -t files < <(git ls-files '**/*.[ch]' '**/*.[ch]pp' ':!:build*/*' ':!:_deps/*')
+          printf '%s\n' "${files[@]}" > files.txt
+          echo "count=${#files[@]}" >> $GITHUB_OUTPUT
+
+      - name: Run clang-format check
+        if: steps.list.outputs.count != '0'
+        run: |
+          clang-format --version
+          xargs -a files.txt -r -- clang-format --dry-run --Werror
