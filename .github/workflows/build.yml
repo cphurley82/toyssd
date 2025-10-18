@@ -23,10 +23,10 @@ jobs:
           cache-to: type=gha,mode=max
       - name: Configure + Build in Docker (enable demo test)
         run: |
-          docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "\
-            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTOYSSD_DEMO_TEST=ON && \
-            cmake --build build -j\
-          "
+          docker run --rm -t -v "$PWD":/src -w /src toyssd \
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTOYSSD_DEMO_TEST=ON
+          docker run --rm -t -v "$PWD":/src -w /src toyssd \
+            cmake --build build -j
       - name: Archive build directory (tar.gz)
         run: |
           tar -czf build.tar.gz build
@@ -75,7 +75,8 @@ jobs:
           tar -xzf build.tar.gz
       - name: Run unit tests (ctest) in Docker
         run: |
-          docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && ctest -R UnitTests --output-on-failure)"
+          docker run --rm -t -v "$PWD":/src -w /src toyssd \
+            ctest --test-dir build -R UnitTests --output-on-failure
 
   demo:
     runs-on: ubuntu-latest
@@ -100,7 +101,9 @@ jobs:
           tar -xzf build.tar.gz
       - name: Run CTest short demo in Docker
         run: |
-          docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && ctest -R FioDemoShort --output-on-failure)"
+          docker run --rm -t -v "$PWD":/src -w /src toyssd \
+            ctest --test-dir build -R FioDemoShort --output-on-failure
       - name: Run full demo target in Docker
         run: |
-          docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && cmake --build . --target run_fio_demo -j1)"
+          docker run --rm -t -v "$PWD":/src -w /src toyssd \
+            cmake --build build --target run_fio_demo -j1

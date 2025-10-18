@@ -7,7 +7,7 @@ Authored by **Chris Hurley**. Licensed under **MIT**.
 
 ## Quick Start (Docker)
 
-The repo ships with a minimal Ubuntu 24.04 container that provides the build environment (compilers, cmake, fio, tools). You mount your repo root into it at `/src` and build inside the container.
+This project uses a single-stage Ubuntu 24.04 image for local dev and CI. The image only sets up tools (compilers, cmake, fio, analyzers). Mount your repo at `/src` and run builds/tests inside the container. To avoid root-owned files on your host, run the container as your host user.
 
 Build the image:
 
@@ -15,42 +15,43 @@ Build the image:
 docker build -t toyssd -f Dockerfile .
 ```
 
-Step 1 — Configure + Build (inside container, with your repo mounted at /src):
+Step 1 — Configure + Build (run as your host user):
 
 ```bash
-docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j"
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake --build build -j
 ```
 
 Step 2 — Run unit tests:
 
 ```bash
-docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && ctest -R UnitTests --output-on-failure)"
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd ctest --test-dir build -R UnitTests --output-on-failure
 ```
 
 Step 3 — Run demos:
 
 ```bash
 # Short demo target
-docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && cmake --build . --target run_fio_demo_short -j1)"
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake --build build --target run_fio_demo_short -j1
 
 # Longer demo target
-docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && cmake --build . --target run_fio_demo -j1)"
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake --build build --target run_fio_demo -j1
 ```
 
 Notes:
 
-- The image includes build tools and system fio; it doesn’t build during docker build. Build occurs when you run commands in the container with your repo mounted.
-- The `-v "$PWD":/src -w /src` bind-mount gives the container easy access to everything in your repo at `/src`.
-- Targets `run_fio_demo_short` and `run_fio_demo` handle required env vars for the fio engine.
+- The image includes build tools and system fio; it doesn’t build during `docker build`. Build happens when you run commands in the container with your repo mounted.
+- The `-v "$PWD":/src -w /src` bind-mount makes your repository available to the container at `/src`.
+- Demo targets (`run_fio_demo_short`, `run_fio_demo`) set required env vars for the fio engine.
 
 ### Validate like CI
 
 Run the same checks CI performs. Two parts: formatting and the build.yml jobs (unit tests + demo).
 
-Formatting check (matches .github/workflows/format.yml):
+Formatting check (matches `.github/workflows/format.yml`):
 
 ```bash
-docker run --rm -t -v "$PWD":/src -w /src toyssd -lc \
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd bash -lc \
   'set -euo pipefail; \
    echo "CI-format: using clang-format"; \
    clang-format --version; \
@@ -59,17 +60,19 @@ docker run --rm -t -v "$PWD":/src -w /src toyssd -lc \
    echo FORMAT_CHECK_OK'
 ```
 
-Build and tests (matches .github/workflows/build.yml):
+Build and tests (matches `.github/workflows/build.yml`):
 
 ```bash
 # Job: unit-tests — Split into build and test
-docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j"
-docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && ctest -R UnitTests --output-on-failure)"
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake --build build -j
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd ctest --test-dir build -R UnitTests --output-on-failure
 
 # Job: demo — Split into build, short CTest demo, and full demo target
-docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTOYSSD_DEMO_TEST=ON && cmake --build build -j"
-docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && ctest -R FioDemoShort --output-on-failure)"
-docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && cmake --build . --target run_fio_demo -j1)"
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTOYSSD_DEMO_TEST=ON
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake --build build -j
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd ctest --test-dir build -R FioDemoShort --output-on-failure
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake --build build --target run_fio_demo -j1
 ```
 
 ---

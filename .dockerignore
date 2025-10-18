@@ -1,7 +1,6 @@
 # Exclude local build artifacts and VCS data from Docker context
 build/
-build-debug/
-build-copilot/
+build-*/
 **/_deps/
 .vscode/
 .git/
@@ -15,3 +14,12 @@ build-copilot/
 *.pyc
 __pycache__/
 .DS_Store
+
+# Additional CMake-generated files and test outputs
+**/CMakeFiles/
+**/CMakeCache.txt
+**/Testing/
+**/CTestTestfile.cmake
+**/DartConfiguration.tcl
+**/Makefile
+**/compile_commands.json
