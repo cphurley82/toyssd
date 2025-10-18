@@ -5,30 +5,102 @@ on:
   pull_request:
 
 jobs:
-  unit-tests:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Build Docker image
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build Docker image with cache
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          tags: toyssd
+          push: false
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Configure + Build in Docker (enable demo test)
         run: |
-          docker build -t toyssd -f Dockerfile .
-      - name: Run unit tests in Docker (project only)
+          docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "\
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTOYSSD_DEMO_TEST=ON && \
+            cmake --build build -j\
+          "
+      - name: Archive build directory (tar.gz)
         run: |
-          docker run --rm -t toyssd -lc "cd build && ctest -R UnitTests --output-on-failure"
+          tar -czf build.tar.gz build
+      - name: Upload build archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-archive
+          path: build.tar.gz
+          if-no-files-found: error
+      - name: Save Docker image to tar
+        run: |
+          docker save toyssd -o toyssd-image.tar
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: toyssd-image.tar
+          if-no-files-found: error
+      - name: Upload build directory as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-dir
+          path: build
+          if-no-files-found: error
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: .
+      - name: Load Docker image
+        run: |
+          docker load -i toyssd-image.tar
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-archive
+          path: .
+      - name: Extract build archive
+        run: |
+          tar -xzf build.tar.gz
+      - name: Run unit tests (ctest) in Docker
+        run: |
+          docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && ctest -R UnitTests --output-on-failure)"
 
   demo:
     runs-on: ubuntu-latest
-    needs: unit-tests
+    needs: build
     steps:
       - uses: actions/checkout@v4
-      - name: Build Docker image
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: .
+      - name: Load Docker image
         run: |
-          docker build -t toyssd -f Dockerfile .
-      - name: Run short CTest demo and full demo in Docker
+          docker load -i toyssd-image.tar
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: build-archive
+          path: .
+      - name: Extract build archive
         run: |
-          docker run --rm -t toyssd -lc "\
-            cd build && \
-            cmake -DTOYSSD_DEMO_TEST=ON -S .. -B . && \
-            ctest -R FioDemoShort --output-on-failure && \
-            cmake --build . --target run_fio_demo -j1\
-          "
+          tar -xzf build.tar.gz
+      - name: Run CTest short demo in Docker
+        run: |
+          docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && ctest -R FioDemoShort --output-on-failure)"
+      - name: Run full demo target in Docker
+        run: |
+          docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && cmake --build . --target run_fio_demo -j1)"

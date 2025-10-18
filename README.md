@@ -7,36 +7,70 @@ Authored by **Chris Hurley**. Licensed under **MIT**.
 
 ## Quick Start (Docker)
 
-The repo ships with a minimal Ubuntu 24.04 container that builds SystemC, the simulator, and unit tests. Python tools install into a virtualenv.
+The repo ships with a minimal Ubuntu 24.04 container that provides the build environment (compilers, cmake, fio, tools). You mount your repo root into it at `/src` and build inside the container.
 
-Build the image (multi-stage: small runtime image):
+Build the image:
 
 ```bash
 docker build -t toyssd -f Dockerfile .
 ```
 
-Run unit tests (in the runtime image):
+Step 1 — Configure + Build (inside container, with your repo mounted at /src):
 
 ```bash
-docker run --rm -t toyssd -lc "unit_tests --gtest_color=yes"
+docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j"
 ```
 
-Run a short fio demo:
+Step 2 — Run unit tests:
 
 ```bash
-docker run --rm -t toyssd -lc "toyssd-demo-short"
+docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && ctest -R UnitTests --output-on-failure)"
 ```
 
-Run the longer fio demo:
+Step 3 — Run demos:
 
 ```bash
-docker run --rm -t toyssd -lc "toyssd-demo"
+# Short demo target
+docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && cmake --build . --target run_fio_demo_short -j1)"
+
+# Longer demo target
+docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && cmake --build . --target run_fio_demo -j1)"
 ```
 
 Notes:
 
-- The image contains a small runtime with system fio installed. No build tools are present in the final image.
-- Unit test binary and shared libs are under `/opt/toyssd` and added to `LD_LIBRARY_PATH`.
+- The image includes build tools and system fio; it doesn’t build during docker build. Build occurs when you run commands in the container with your repo mounted.
+- The `-v "$PWD":/src -w /src` bind-mount gives the container easy access to everything in your repo at `/src`.
+- Targets `run_fio_demo_short` and `run_fio_demo` handle required env vars for the fio engine.
+
+### Validate like CI
+
+Run the same checks CI performs. Two parts: formatting and the build.yml jobs (unit tests + demo).
+
+Formatting check (matches .github/workflows/format.yml):
+
+```bash
+docker run --rm -t -v "$PWD":/src -w /src toyssd -lc \
+  'set -euo pipefail; \
+   echo "CI-format: using clang-format"; \
+   clang-format --version; \
+   git ls-files | grep -E "\\.(c|h|cpp|hpp)$" | grep -vE "^(build|build-debug|_deps)/" | \
+   tee files.txt | xargs -r clang-format --dry-run --Werror; \
+   echo FORMAT_CHECK_OK'
+```
+
+Build and tests (matches .github/workflows/build.yml):
+
+```bash
+# Job: unit-tests — Split into build and test
+docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build -j"
+docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && ctest -R UnitTests --output-on-failure)"
+
+# Job: demo — Split into build, short CTest demo, and full demo target
+docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTOYSSD_DEMO_TEST=ON && cmake --build build -j"
+docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && ctest -R FioDemoShort --output-on-failure)"
+docker run --rm -t -v "$PWD":/src -w /src toyssd -lc "(cd build && cmake --build . --target run_fio_demo -j1)"
+```
 
 ---
 
