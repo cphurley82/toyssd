@@ -1,4 +1,16 @@
 # toyssdConfig.cmake - CMake package configuration for toyssd
+#
+# Usage (consumer):
+#   find_package(toyssd CONFIG REQUIRED)
+#   target_link_libraries(<your_target> PRIVATE toyssd::ssdsim)   # public C API
+#   # Optionally, link to toyssd::simlib if you need deeper integration with
+#   # simulator internals (headers installed under include/toyssd/sim).
+#
+# This config simply loads the exported targets generated during installation
+# (toyssdTargets.cmake). Transitive dependencies like SystemC are propagated
+# via the targets' link interfaces.
+# TODO: Is this needed? One day we may wan to package the simulator separately
+# from the firmware, but for now this seems like unnecessary complexity.
 
 @PACKAGE_INIT@
 

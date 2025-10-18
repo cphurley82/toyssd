@@ -1,3 +1,6 @@
+# simlib — core simulator library (SystemC components + firmware)
+# This shared library contains most of the simulator implementation and is
+# linked by the public-facing 'ssdsim' library and unit tests.
 add_library(simlib SHARED
   host/HostInterface.cpp
   fw/Firmware.cpp fw/FTL.cpp
@@ -5,6 +8,10 @@ add_library(simlib SHARED
   Top.h
 )
 
+# Public include directories so downstream targets can include sim headers
+# when they link to simlib. We also expose the C API headers from ../api for
+# convenience while building from source.
+# TODO: Do we need the INSTALL_INTERFACE paths here if we are not installing?
 target_include_directories(simlib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../api>
@@ -15,13 +22,15 @@ target_include_directories(simlib PUBLIC
 target_link_libraries(simlib PUBLIC systemc)
 set_target_properties(simlib PROPERTIES EXPORT_NAME simlib)
 set_target_properties(simlib PROPERTIES
-  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} # TODO: What are these?
   ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
 )
 
-# Provide a standalone SystemC entry-point as a separate executable to avoid
-# pulling sc_main into libraries that are linked by tests.
+# sim_main — standalone SystemC entry-point
+# We keep sc_main out of libraries to avoid accidental multiple-definition
+# issues when tests or other binaries link against simlib. This small
+# executable is handy for ad-hoc runs of the simulator.
 add_executable(sim_main
   main.cpp
 )
