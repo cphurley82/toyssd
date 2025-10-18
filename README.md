@@ -9,56 +9,34 @@ Authored by **Chris Hurley**. Licensed under **MIT**.
 
 The repo ships with a minimal Ubuntu 24.04 container that builds SystemC, the simulator, and unit tests. Python tools install into a virtualenv.
 
-Build the image:
+Build the image (multi-stage: small runtime image):
 
 ```bash
 docker build -t toyssd -f Dockerfile .
 ```
 
-Run unit tests:
+Run unit tests (in the runtime image):
 
 ```bash
-docker run --rm -t toyssd -lc "cd build && ctest -R UnitTests --output-on-failure"
+docker run --rm -t toyssd -lc "unit_tests --gtest_color=yes"
 ```
 
-Run all tests (SystemC examples are disabled by default):
+Run a short fio demo:
 
 ```bash
-docker run --rm -t toyssd -lc "cd build && ctest --output-on-failure"
+docker run --rm -t toyssd -lc "toyssd-demo-short"
 ```
 
-Run the short 1s demo:
+Run the longer fio demo:
 
 ```bash
-docker run --rm -t toyssd -lc "cd build && cmake --build . --target run_fio_demo_short -j1"
+docker run --rm -t toyssd -lc "toyssd-demo"
 ```
 
-Run the fio demo (Option A: via CMake target)
+Notes:
 
-```bash
-docker run --rm -t toyssd -lc "cd build && cmake --build . --target run_fio_demo"
-```
-
-This target auto-detects a fio binary bundled from sources during the CMake configure step. If your environment lacks fio, the target will fall back to the bundled one when available.
-
-Run the fio demo (Option B: manual fio invocation inside the container):
-
-```bash
-# start an interactive shell if you want to explore
-docker run -it --rm toyssd bash
-
-# Inside the container (fio is already built from source during CMake)
-cd /workspace/build
-FIO=$(pwd)/_deps/fio-src/fio
-FIO_ENGINE=$(pwd)/libssdsim_engine.so
-"${FIO}" \
-  --ioengine=external:"${FIO_ENGINE}" \
-  --filename=/workspace/config/default.json \
-  --name=demo --rw=randwrite --size=64M --bs=4k --iodepth=8 --numjobs=1 \
-  --time_based --runtime=5
-```
-
-Note: If the CMake target fails due to a missing fio binary, use the manual Option B above. In the Docker image, a bundled fio is built during image creation, so Option A should work out of the box.
+- The image contains a small runtime with system fio installed. No build tools are present in the final image.
+- Unit test binary and shared libs are under `/opt/toyssd` and added to `LD_LIBRARY_PATH`.
 
 ---
 

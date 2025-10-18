@@ -24,9 +24,9 @@ struct Top : sc_core::sc_module {
 
 // Factory used by C API bootstrap
 namespace ssdsim_internal {
-  inline sc_core::sc_module* create_top(HostInterface * *host_out) {
-    auto* t = new Top("top");
-    if (host_out) *host_out = &t->host;
-    return static_cast<sc_core::sc_module*>(t);
-  }
+inline sc_core::sc_module* create_top(HostInterface** host_out) {
+  auto* t = new Top("top");
+  if (host_out) *host_out = &t->host;
+  return static_cast<sc_core::sc_module*>(t);
 }
+}  // namespace ssdsim_internal

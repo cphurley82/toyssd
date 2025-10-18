@@ -4,6 +4,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+// macOS note: Apple's stdbool.h defines 'bool' as a macro to _Bool, which
+// conflicts with some fio headers that typedef 'bool'. Include stdbool and
+// undef the macro before including fio.h.
+#ifdef __APPLE__
+#include <stdbool.h>
+#ifdef bool
+#undef bool
+#endif
+#endif
 #include "fio.h"
 
 typedef int (*fn_init_t)(const char*);

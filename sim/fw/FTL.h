@@ -8,7 +8,7 @@ struct PhysicalPage {
 };
 
 class FTL {
-public:
+ public:
   FTL(uint32_t blocks_per_die, uint32_t pages_per_block)
       : blocks(blocks_per_die), pages_per_block(pages_per_block) {}
 
@@ -24,7 +24,7 @@ public:
     return PhysicalPage{0, 0, 0};
   }
 
-private:
+ private:
   void advance() {
     if (++next_page >= pages_per_block) {
       next_page = 0;

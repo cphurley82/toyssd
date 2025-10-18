@@ -21,7 +21,7 @@ struct Completion {
   sc_core::sc_time complete_ts;
 };
 
-inline std::ostream& operator << (std::ostream & os, const Completion& c) {
+inline std::ostream& operator<<(std::ostream& os, const Completion& c) {
   return os << "Completion{" << c.user_tag << ", status=" << c.status
             << ", t=" << c.complete_ts << "}";
 }
@@ -38,9 +38,9 @@ struct HostInterface : sc_core::sc_module {
 
 // C API adapters
 namespace ssdsim_internal {
-  int submit_cxx(void* user_tag, uint64_t lba, uint32_t size_bytes,
-                 bool is_write, void* buf);
-  int poll_cxx(int max_cpls, ssd_cpl_t* out_cpls);
-  int init_cxx(const char* cfg);
-  void shutdown_cxx();
-}
+int submit_cxx(void* user_tag, uint64_t lba, uint32_t size_bytes, bool is_write,
+               void* buf);
+int poll_cxx(int max_cpls, ssd_cpl_t* out_cpls);
+int init_cxx(const char* cfg);
+void shutdown_cxx();
+}  // namespace ssdsim_internal
