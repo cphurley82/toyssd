@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.28) # Ubuntu 24.04 LTS provides CMake 3.28.
 
 #
 # toyssd — Top-level CMake
@@ -9,31 +9,60 @@ cmake_minimum_required(VERSION 3.16)
 #  - Provide basic install + package config so consumers can `find_package(toyssd)`.
 #  - Avoid pulling upstream subproject tests (e.g., SystemC examples).
 #
-# Root project declaration. This repo builds a SystemC-based SSD simulator, an
+# This repo builds a SystemC-based SSD simulator, an
 # external fio ioengine module, and unit tests. We default to a developer-
-# friendly setup and keep consumers in mind via a basic install + package.
-# TODO: Why do we need to "keep consumers in mind" who are the consumers?
+# friendly setup and also provide basic install + package config so other
+# projects ("consumers") can embed toyssd in other builds via CMake.
 project(toyssd VERSION 0.1.0 LANGUAGES CXX C)
 
-# Global language/tooling settings
+############################
+# Build options (toggles)  #
+############################
+
+# These can be overridden at configure time.
+# e.g. -DBUILD_TESTING=OFF -DTOYSSD_BUILD_DEMOS=OFF
+option(BUILD_TESTING "Enable building unit tests" ON)
+option(TOYSSD_BUILD_FIO_ENGINE "Build bundled fio external ioengine" ON)
+option(TOYSSD_BUILD_DEMOS "Add demo custom targets that run fio with the engine" ON)
+option(BUILD_BUNDLED_FIO "Build bundled fio from fetched sources if no system fio is found" ON)
+option(TOYSSD_DEMO_TEST "Enable short ctest demo 'FioDemoShort' (1s, 4M). Run with: ctest -R FioDemoShort --output-on-failure" ON)
+
+# Encourage out-of-source builds to keep generated files out of the source tree.
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
+  message(WARNING "In-source build detected. It's recommended to use an out-of-source build:\n  cmake -S . -B build && cmake --build build")
+endif()
+
+####################################
+# Global language/tooling settings #
+####################################
+
+# Default to C++20, require at least that, but allow users to override to newer
+# via -DCMAKE_CXX_STANDARD=23, etc.
 set(CMAKE_CXX_STANDARD 20 CACHE STRING "C++ standard")
-set(CMAKE_CXX_STANDARD_REQUIRED ON CACHE BOOL "Require C++ standard" FORCE)
+set(CMAKE_CXX_STANDARD_REQUIRED ON CACHE BOOL "Require C++ standard")
+
+# Disable GNU extensions for a clean dialect.
+set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL "Disable compiler-specific C++ extensions")
+
+# Position-independent code is for building shared libraries.
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Developer quality-of-life: emit compile_commands.json for IDEs and tooling
-# (clangd, vscode-cpptools, etc). Harmless for consumers.
-# TODO: Who are the consumers?
+# (clangd, vscode-cpptools, etc).
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Generate compile_commands.json" FORCE)
 
-# CMake >= 3.30 removed compatibility with projects declaring cmake_minimum_required < 3.5.
-# Some third-party deps (e.g., SystemC 2.3.3) still do that. This variable is a harmless cache hint
-# and a no-op on older CMake; it exists here to document intent and future-proof if honored.
-# TODO: We switched to SystemC 3.0.1+, do we still need this?
-set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "Min policy version for subprojects")
+##############################
+# CMake modules & utilities  #
+##############################
 
+# Tool for fetching external dependencies.
 include(FetchContent)
-include(GNUInstallDirs) # install path helpers # TODO: Why do we need this?
-include(CTest)          # provides BUILD_TESTING option
+
+# Provides variables in install() calls and package config paths.
+include(GNUInstallDirs)
+
+# Respects BUILD_TESTING set above.
+include(CTest) 
 
 ############################
 # clang-format integration #
@@ -56,10 +85,6 @@ if(CLANG_FORMAT_EXE)
     ${CMAKE_SOURCE_DIR}/tests/*.[ch]
     ${CMAKE_SOURCE_DIR}/fio_plugin/*.[ch]
   )
-  # Exclude anything under build or _deps just in case
-  # TODO: Is this necessary when the build should be outside the source tree?
-  list(FILTER TOYSSD_FORMAT_SOURCES EXCLUDE REGEX ".*/build[^/]*/.*")
-  list(FILTER TOYSSD_FORMAT_SOURCES EXCLUDE REGEX ".*/_deps/.*")
 
   # Target 'format' will format all C/C++ sources in key folders.
   add_custom_target(format
@@ -74,7 +99,7 @@ if(CLANG_FORMAT_EXE)
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Checking C/C++ formatting (clang-format)"
   )
-else()
+else() # No CLANG_FORMAT_EXE
   # Provide no-op targets so other targets can depend on 'format' unconditionally
   add_custom_target(format
     COMMAND ${CMAKE_COMMAND} -E echo "clang-format not found: skipping formatting"
@@ -82,19 +107,13 @@ else()
   add_custom_target(format-check
     COMMAND ${CMAKE_COMMAND} -E echo "clang-format not found: skipping format check"
   )
-endif()
+endif() # if(CLANG_FORMAT_EXE)
 
 # (format dependencies are added after targets are defined below)
 
 ############################
 # External Dependencies    #
 ############################
-
-# Build toggles (all default ON to preserve current behavior)
-option(TOYSSD_BUILD_FIO_ENGINE "Build bundled fio external ioengine" ON)
-option(TOYSSD_BUILD_DEMOS "Add demo custom targets that run fio with the engine" ON)
-# BUILD_TESTING comes from CTest; keep ON by default but gate our tests under it.
-# TODO: Can the above options be put at the top of the file for visibility or closer to the other fio stuff?
 
 # GoogleTest (only when testing is enabled)
 if(BUILD_TESTING)
@@ -105,7 +124,7 @@ if(BUILD_TESTING)
   )
   set(INSTALL_GTEST OFF)
   FetchContent_MakeAvailable(googletest)
-endif()
+endif() # 
 
 # SystemC (3.0.1+)
 # We fetch SystemC as a subproject. To speed up builds and keep logs clean,
@@ -117,16 +136,13 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/accellera-official/systemc.git
   GIT_TAG 3.0.1
 )
+# Keep SystemC's C++ standard and build type aligned with the project's by 
+# default.
+# Users can still override these via -DSystemC_BUILD_TYPE=<value> and
+# -DSystemC_CXX_STANDARD=<value>.
 set(SYSTEMC_BUILD_TYPE ${CMAKE_BUILD_TYPE})
-set(SystemC_CXX_STANDARD 20 CACHE STRING "SystemC C++ standard")
+set(SystemC_CXX_STANDARD ${CMAKE_CXX_STANDARD} CACHE STRING "SystemC C++ standard")
 FetchContent_MakeAvailable(systemc)
-
-# fio (headers only for external ioengine build)
-# The external ioengine is a MODULE that is dlopen()'d by fio at runtime.
-# We only need fio headers during compilation of the engine itself. At runtime,
-# we try to use a system 'fio' if present, otherwise build a bundled one from
-# fetched sources (opt-in via BUILD_BUNDLED_FIO).
-# TODO: The above comment seems out of place here since fio is only fetched later.
 
 ############################
 # Subprojects / Targets    #
@@ -141,44 +157,41 @@ add_subdirectory(sim)
 # loaded by the fio engine. Also includes a tiny sc_main stub to satisfy
 # linkage for consumers that need it.
 add_library(ssdsim SHARED api/ssdsim_api.cpp api/sc_main_stub.cpp)
+target_compile_features(ssdsim PUBLIC cxx_std_20)
 target_include_directories(ssdsim PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/api>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/toyssd>
 )
 target_link_libraries(ssdsim PRIVATE simlib systemc)
 set_target_properties(ssdsim PROPERTIES EXPORT_NAME ssdsim)
+add_dependencies(ssdsim format)
 
 # Provide a standalone sc_main stub library.
 # Useful with LD_PRELOAD on Linux to intercept/override sc_main resolution.
 add_library(scmain_stub SHARED api/sc_main_stub.cpp)
+target_compile_features(scmain_stub PUBLIC cxx_std_20)
 set_target_properties(scmain_stub PROPERTIES OUTPUT_NAME scmain_stub)
-
-# Ensure main targets trigger formatting before building (only if targets exist)
-# TODO: Is this the simplest way to do this, could we just add the dependency unconditionally where the target is defined?
-if(TARGET format)
-  foreach(_t IN ITEMS simlib ssdsim scmain_stub)
-    if(TARGET ${_t})
-      add_dependencies(${_t} format)
-    endif()
-  endforeach()
-endif()
+add_dependencies(scmain_stub format)
 
 ########################################
 # Tests (only if BUILD_TESTING is ON)  #
 ########################################
 if(BUILD_TESTING)
-  # Our tests live under tests/ and are only included when BUILD_TESTING=ON.
-  # Note: tests/CMakeLists also uses gtest_discover_tests for per-test
-  # registration; the add_test below is a convenience wrapper that runs the
-  # whole unit_tests binary and is kept for compatibility with existing CI.
+  # Enable unit tests (registered in tests/ via gtest_discover_tests).
   add_subdirectory(tests)
-  # TODO: This is redundant with gtest_discover_tests, probably should be removed but may need to re-work CI first to run the discovered tests.
-  add_test(NAME UnitTests COMMAND unit_tests)
+  # Tips: ctest -R <regex> --output-on-failure. GoogleTest XML is written to
+  # build/test-results/gtest/ for CI ingestion.
 endif()
 
 ########################################
 # fio external ioengine + demos (opt)  #
 ########################################
+
+# The fio external ioengine is a MODULE that is dlopen()'d by fio at runtime.
+# We only need fio headers during compilation of the engine itself. At runtime,
+# we try to use a system 'fio' if present; otherwise we can build a bundled one
+# from fetched sources when BUILD_BUNDLED_FIO=ON. The demo targets below honor
+# these choices and will depend on the bundled build when needed.
 if(TOYSSD_BUILD_FIO_ENGINE)
   # Fetch fio headers needed to build the external ioengine
   # TODO: Should we switch to a newer version of fio?

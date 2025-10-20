@@ -7,6 +7,8 @@ add_library(simlib SHARED
   nand/NandInterfaceImpl.cpp nand/NandModel.cpp
   Top.h
 )
+target_compile_features(simlib PUBLIC cxx_std_20)
+add_dependencies(simlib format)
 
 # Public include directories so downstream targets can include sim headers
 # when they link to simlib. We also expose the C API headers from ../api for
@@ -34,4 +36,5 @@ set_target_properties(simlib PROPERTIES
 add_executable(sim_main
   main.cpp
 )
+target_compile_features(sim_main PRIVATE cxx_std_20)
 target_link_libraries(sim_main PRIVATE simlib systemc)

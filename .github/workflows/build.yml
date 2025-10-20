@@ -76,7 +76,22 @@ jobs:
       - name: Run unit tests (ctest) in Docker
         run: |
           docker run --rm -t -v "$PWD":/src -w /src toyssd \
-            ctest --test-dir build -R UnitTests --output-on-failure
+            ctest --test-dir build --output-on-failure --no-tests=error
+
+      - name: Publish unit test results (GoogleTest XML)
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: |
+            build/test-results/gtest/**/*.xml
+
+      - name: Upload test XMLs (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gtest-xml
+          path: build/test-results/gtest/**/*.xml
+          if-no-files-found: warn
 
   demo:
     runs-on: ubuntu-latest

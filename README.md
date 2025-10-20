@@ -5,6 +5,8 @@
 A modular, **SystemC/TLM**-based SSD simulator scaffold that integrates with **fio**, uses **GoogleTest** for TDD, and ships with **Docker** + **GitHub Actions CI**.  
 Authored by **Chris Hurley**. Licensed under **MIT**.
 
+Note on C++ standard: The project defaults to C++20 (no GNU extensions). You can opt into a newer standard by configuring with `-DCMAKE_CXX_STANDARD=23` (or higher, if supported by your toolchain).
+
 ## Quick Start (Docker)
 
 This project uses a single-stage Ubuntu 24.04 image for local dev and CI. The image only sets up tools (compilers, cmake, fio, analyzers). Mount your repo at `/src` and run builds/tests inside the container. To avoid root-owned files on your host, run the container as your host user.
