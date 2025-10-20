@@ -1,5 +1,6 @@
 # toyssd
 
+[![build-and-test](https://github.com/cphurley82/toyssd/actions/workflows/build.yml/badge.svg)](https://github.com/cphurley82/toyssd/actions/workflows/build.yml)
 [![Formatting (clang-format)](https://github.com/cphurley82/toyssd/actions/workflows/format.yml/badge.svg)](https://github.com/cphurley82/toyssd/actions/workflows/format.yml)
 
 A modular, **SystemC/TLM**-based SSD simulator scaffold that integrates with **fio**, uses **GoogleTest** for TDD, and ships with **Docker** + **GitHub Actions CI**.  
