@@ -194,11 +194,10 @@ endif()
 # these choices and will depend on the bundled build when needed.
 if(TOYSSD_BUILD_FIO_ENGINE)
   # Fetch fio headers needed to build the external ioengine
-  # TODO: Should we switch to a newer version of fio?
   FetchContent_Declare(
     fio
     GIT_REPOSITORY https://github.com/axboe/fio.git
-    GIT_TAG fio-3.36
+    GIT_TAG fio-3.41
   )
   FetchContent_MakeAvailable(fio)
   set(FIO_INCLUDE_DIR ${fio_SOURCE_DIR})
