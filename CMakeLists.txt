@@ -225,35 +225,35 @@ if(TOYSSD_BUILD_FIO_ENGINE)
   set(DEMO_RUNTIME_S 5                                 CACHE STRING "Runtime (seconds) for the demo when time_based is used")
 
   # Allow overriding fio executable path if desired
-  set(FIO_EXE_OVERRIDE "" CACHE FILEPATH "Override path to fio binary; if empty, auto-detect")
-  option(BUILD_BUNDLED_FIO "Build bundled fio from fetched sources if no system fio is found" ON)
+  set(FIO_EXE_OVERRIDE "" CACHE FILEPATH "Override path to fio binary; if empty, prefer bundled fio for reproducibility")
+  option(BUILD_BUNDLED_FIO "Build and prefer bundled fio from fetched sources (recommended for consistent demos/tests)" ON)
 
+  # Selection logic: prefer bundled fio unless explicitly overridden
+  set(USE_BUNDLED_FIO OFF)
   set(HAVE_SYSTEM_FIO OFF)
   if(FIO_EXE_OVERRIDE)
     set(FIO_EXE ${FIO_EXE_OVERRIDE})
-    set(HAVE_SYSTEM_FIO ON)
+  elseif(BUILD_BUNDLED_FIO)
+    set(USE_BUNDLED_FIO ON)
+    set(FIO_EXE ${fio_SOURCE_DIR}/fio)
+    # Build fio using its Makefile in the source tree.
+    add_custom_target(fio_bundled
+      COMMAND ${CMAKE_COMMAND} -E env PATH=$ENV{PATH} make -j
+      WORKING_DIRECTORY ${fio_SOURCE_DIR}
+      COMMENT "Building bundled fio from fetched sources")
   else()
+    # Fall back to a system-installed fio if bundling is disabled
     find_program(FIO_EXE NAMES fio)
     if(FIO_EXE)
       set(HAVE_SYSTEM_FIO ON)
     else()
-      # Fallback to the fetched source tree; we can build it if requested.
-      set(FIO_EXE ${fio_SOURCE_DIR}/fio)
-      if(BUILD_BUNDLED_FIO)
-        message(STATUS "No system 'fio' found. BUILD_BUNDLED_FIO=ON: will use bundled fio at ${FIO_EXE} (built from sources).")
-        # Build fio using its Makefile in the source tree.
-        add_custom_target(fio_bundled
-          COMMAND ${CMAKE_COMMAND} -E env PATH=$ENV{PATH} make -j
-          WORKING_DIRECTORY ${fio_SOURCE_DIR}
-          COMMENT "Building bundled fio from fetched sources")
-      else()
-        message(STATUS "No system 'fio' found and BUILD_BUNDLED_FIO=OFF. You may need to set FIO_EXE_OVERRIDE or install fio.")
-      endif()
+      message(STATUS "No system 'fio' found and BUILD_BUNDLED_FIO=OFF. You may need to set FIO_EXE_OVERRIDE or install fio.")
     endif()
   endif()
-  
-  if(NOT EXISTS ${FIO_EXE})
-    message(WARNING "fio executable not found at '${FIO_EXE}'. The demo target may fail unless fio is available in PATH or bundled fio is built.")
+
+  # Warn only when we neither use bundled fio nor have a resolvable executable
+  if(NOT USE_BUNDLED_FIO AND NOT FIO_EXE_OVERRIDE AND NOT HAVE_SYSTEM_FIO)
+    message(WARNING "fio executable not found. The demo target may fail unless fio is available in PATH or bundled fio is enabled.")
   endif()
 
   if(TOYSSD_BUILD_DEMOS)
@@ -282,7 +282,7 @@ if(TOYSSD_BUILD_FIO_ENGINE)
       COMMENT "Running fio demo with simulated SSD"
     )
     add_dependencies(run_fio_demo ssdsim ssdsim_engine scmain_stub)
-    if(NOT HAVE_SYSTEM_FIO AND BUILD_BUNDLED_FIO)
+    if(USE_BUNDLED_FIO)
       add_dependencies(run_fio_demo fio_bundled)
     endif()
     
@@ -318,7 +318,7 @@ if(TOYSSD_BUILD_FIO_ENGINE)
       COMMENT "Running short fio demo (1s, 4M) with simulated SSD"
     )
     add_dependencies(run_fio_demo_short ssdsim ssdsim_engine scmain_stub)
-    if(NOT HAVE_SYSTEM_FIO AND BUILD_BUNDLED_FIO)
+    if(USE_BUNDLED_FIO)
       add_dependencies(run_fio_demo_short fio_bundled)
     endif()
 
