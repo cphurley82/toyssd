@@ -304,9 +304,6 @@ endif() # TOYSSD_BUILD_FIO_ENGINE
 ########################################
 # Install & Package (basic)            #
 ########################################
-# TODO: Why would we need to install & package anything? One day the simulator
-# might be seperated from the firmware but is this added complication worth it
-# now?
 include(CMakePackageConfigHelpers)
 
 # Install headers (C API surface)
@@ -352,7 +349,6 @@ install(EXPORT toyssdTargets
         NAMESPACE toyssd::
         DESTINATION ${toyssd_INSTALL_CMAKEDIR})
 
-# Install internal headers for advanced consumers (sim library)
 # Install internal headers for advanced consumers (sim library)
 # This exposes headers under include/toyssd/sim for projects that want deeper
 # integration with simlib internals. Keep stable C API in api/.

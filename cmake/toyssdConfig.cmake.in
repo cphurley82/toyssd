@@ -9,8 +9,6 @@
 # This config simply loads the exported targets generated during installation
 # (toyssdTargets.cmake). Transitive dependencies like SystemC are propagated
 # via the targets' link interfaces.
-# TODO: Is this needed? One day we may wan to package the simulator separately
-# from the firmware, but for now this seems like unnecessary complexity.
 
 @PACKAGE_INIT@
 

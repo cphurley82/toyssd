@@ -13,7 +13,6 @@ add_dependencies(simlib format)
 # Public include directories so downstream targets can include sim headers
 # when they link to simlib. We also expose the C API headers from ../api for
 # convenience while building from source.
-# TODO: Do we need the INSTALL_INTERFACE paths here if we are not installing?
 target_include_directories(simlib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../api>
@@ -24,9 +23,11 @@ target_include_directories(simlib PUBLIC
 target_link_libraries(simlib PUBLIC systemc)
 set_target_properties(simlib PROPERTIES EXPORT_NAME simlib)
 set_target_properties(simlib PROPERTIES
-  LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR} # TODO: What are these?
-  ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
-  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}
+  # Tidy build tree layout: libraries -> lib/, executables -> bin/
+  # Use $<CONFIG> so multi-config generators (Xcode/VS) keep configs separate.
+  LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
+  ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
 )
 
 # sim_main — standalone SystemC entry-point
@@ -38,3 +39,6 @@ add_executable(sim_main
 )
 target_compile_features(sim_main PRIVATE cxx_std_20)
 target_link_libraries(sim_main PRIVATE simlib systemc)
+set_target_properties(sim_main PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
+)
