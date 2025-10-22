@@ -122,7 +122,3 @@ jobs:
         run: |
           docker run --rm -t -v "$PWD":/src -w /src toyssd \
             ctest --test-dir build -L demo --output-on-failure
-      - name: Run full demo target in Docker
-        run: |
-          docker run --rm -t -v "$PWD":/src -w /src toyssd \
-            cmake --build build --target run_fio_demo -j1

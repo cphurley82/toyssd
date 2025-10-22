@@ -25,7 +25,6 @@ option(BUILD_TESTING "Enable building unit tests" ON)
 option(TOYSSD_BUILD_FIO_ENGINE "Build bundled fio external ioengine" ON)
 option(TOYSSD_BUILD_DEMOS "Add demo custom targets that run fio with the engine" ON)
 option(BUILD_BUNDLED_FIO "Build bundled fio from fetched sources if no system fio is found" ON)
-option(TOYSSD_DEMO_TEST "Enable short ctest demo 'FioDemoShort' (1s, 4M). Run with: ctest -R FioDemoShort --output-on-failure" ON)
 
 # Encourage out-of-source builds to keep generated files out of the source tree.
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
@@ -237,7 +236,7 @@ if(TOYSSD_BUILD_FIO_ENGINE)
     set(USE_BUNDLED_FIO ON)
     set(FIO_EXE ${fio_SOURCE_DIR}/fio)
     # Build fio using its Makefile in the source tree.
-    add_custom_target(fio_bundled
+    add_custom_target(fio_bundled ALL
       COMMAND ${CMAKE_COMMAND} -E env PATH=$ENV{PATH} make -j
       WORKING_DIRECTORY ${fio_SOURCE_DIR}
       COMMENT "Building bundled fio from fetched sources")
@@ -253,50 +252,51 @@ if(TOYSSD_BUILD_FIO_ENGINE)
 
   # Warn only when we neither use bundled fio nor have a resolvable executable
   if(NOT USE_BUNDLED_FIO AND NOT FIO_EXE_OVERRIDE AND NOT HAVE_SYSTEM_FIO)
-    message(WARNING "fio executable not found. The demo target may fail unless fio is available in PATH or bundled fio is enabled.")
+    message(WARNING "fio executable not found. The demo may fail unless fio is available in PATH or bundled fio is enabled.")
   endif()
 
+  # Register the demo as a CTest so automation can run it via `ctest`.
   if(TOYSSD_BUILD_DEMOS)
-    add_custom_target(run_fio_demo
-      COMMAND
-        ${CMAKE_COMMAND} -E env
-          SSD_SIM_LIB_PATH=$<TARGET_FILE:ssdsim>
-          # Platform-specific dynamic loader variables for resolving libssdsim and libsystemc:
-          #  - macOS: DYLD_LIBRARY_PATH
-          #  - Linux/others: LD_LIBRARY_PATH (+ LD_PRELOAD for scmain_stub)
-          $<$<PLATFORM_ID:Darwin>:DYLD_LIBRARY_PATH=$<TARGET_FILE_DIR:ssdsim>:$<TARGET_FILE_DIR:systemc>>
-          $<$<NOT:$<PLATFORM_ID:Darwin>>:LD_LIBRARY_PATH=$<TARGET_FILE_DIR:ssdsim>:$<TARGET_FILE_DIR:systemc>>
-          $<$<NOT:$<PLATFORM_ID:Darwin>>:LD_PRELOAD=$<TARGET_FILE:scmain_stub>>
-          ${FIO_EXE}
-        --ioengine=external:$<TARGET_FILE:ssdsim_engine>
-        --filename=${DEMO_CONFIG}
-        --name=demo
-        --rw=${DEMO_RW}
-        --size=${DEMO_SIZE}
-        --bs=${DEMO_BS}
-        --iodepth=${DEMO_IODEPTH}
-        --numjobs=${DEMO_NUMJOBS}
-        --time_based
-        --runtime=${DEMO_RUNTIME_S}
-      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-      COMMENT "Running fio demo with simulated SSD"
-    )
-    add_dependencies(run_fio_demo ssdsim ssdsim_engine scmain_stub)
-    if(USE_BUNDLED_FIO)
-      add_dependencies(run_fio_demo fio_bundled)
+    if(APPLE)
+      add_test(NAME FioDemo
+        COMMAND
+          ${CMAKE_COMMAND} -E env
+            SSD_SIM_LIB_PATH=$<TARGET_FILE:ssdsim>
+            DYLD_LIBRARY_PATH=$<TARGET_FILE_DIR:ssdsim>:$<TARGET_FILE_DIR:systemc>
+            ${FIO_EXE}
+          --ioengine=external:$<TARGET_FILE:ssdsim_engine>
+          --filename=${DEMO_CONFIG}
+          --name=demo
+          --rw=${DEMO_RW}
+          --size=${DEMO_SIZE}
+          --bs=${DEMO_BS}
+          --iodepth=${DEMO_IODEPTH}
+          --numjobs=${DEMO_NUMJOBS}
+          --time_based
+          --runtime=${DEMO_RUNTIME_S}
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      )
+    else()
+      add_test(NAME FioDemo
+        COMMAND
+          ${CMAKE_COMMAND} -E env
+            SSD_SIM_LIB_PATH=$<TARGET_FILE:ssdsim>
+            LD_LIBRARY_PATH=$<TARGET_FILE_DIR:ssdsim>:$<TARGET_FILE_DIR:systemc>
+            LD_PRELOAD=$<TARGET_FILE:scmain_stub>
+            ${FIO_EXE}
+          --ioengine=external:$<TARGET_FILE:ssdsim_engine>
+          --filename=${DEMO_CONFIG}
+          --name=demo
+          --rw=${DEMO_RW}
+          --size=${DEMO_SIZE}
+          --bs=${DEMO_BS}
+          --iodepth=${DEMO_IODEPTH}
+          --numjobs=${DEMO_NUMJOBS}
+          --time_based
+          --runtime=${DEMO_RUNTIME_S}
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      )
     endif()
-    
-    # Convenience alias target: `cmake —build <build_dir> —target demo`
-    add_custom_target(demo DEPENDS run_fio_demo)
-  endif()
-
-  # Register the primary fio demo as a CTest so CI can run it.
-  # With DEMO_RUNTIME_S kept short (e.g., 1s), this remains a quick smoke.
-  if(TOYSSD_BUILD_DEMOS)
-    add_test(NAME FioDemo
-             COMMAND ${CMAKE_COMMAND} --build . --target run_fio_demo -j1
-             WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
-    # Label the test so CI can select/exclude it easily.
     set_tests_properties(FioDemo PROPERTIES LABELS "demo")
   endif()
 endif() # TOYSSD_BUILD_FIO_ENGINE

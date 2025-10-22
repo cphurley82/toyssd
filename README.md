@@ -28,55 +28,13 @@ docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /
 Step 2 — Run unit tests:
 
 ```bash
-docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd ctest --test-dir build -R UnitTests --output-on-failure
-```
-
-Step 3 — Run demos:
-
-```bash
-# Short demo target
-docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake --build build --target run_fio_demo_short -j1
-
-# Longer demo target
-docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake --build build --target run_fio_demo -j1
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd ctest --test-dir build --output-on-failure --no-tests=error
 ```
 
 Notes:
 
 - The image includes build tools and system fio; it doesn’t build during `docker build`. Build happens when you run commands in the container with your repo mounted.
 - The `-v "$PWD":/src -w /src` bind-mount makes your repository available to the container at `/src`.
-- Demo targets (`run_fio_demo_short`, `run_fio_demo`) set required env vars for the fio engine.
-
-### Validate like CI
-
-Run the same checks CI performs. Two parts: formatting and the build.yml jobs (unit tests + demo).
-
-Formatting check (matches `.github/workflows/format.yml`):
-
-```bash
-docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd bash -lc \
-  'set -euo pipefail; \
-   echo "CI-format: using clang-format"; \
-   clang-format --version; \
-   git ls-files | grep -E "\\.(c|h|cpp|hpp)$" | grep -vE "^(build|build-debug|_deps)/" | \
-   tee files.txt | xargs -r clang-format --dry-run --Werror; \
-   echo FORMAT_CHECK_OK'
-```
-
-Build and tests (matches `.github/workflows/build.yml`):
-
-```bash
-# Job: unit-tests — Split into build and test
-docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake --build build -j
-docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd ctest --test-dir build -R UnitTests --output-on-failure
-
-# Job: demo — Split into build, short CTest demo, and full demo target
-docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DTOYSSD_DEMO_TEST=ON
-docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake --build build -j
-docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd ctest --test-dir build -R FioDemoShort --output-on-failure
-docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd cmake --build build --target run_fio_demo -j1
-```
 
 ---
 
@@ -85,7 +43,7 @@ docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /
 Prerequisites:
 
 - Xcode Command Line Tools (or Xcode): `xcode-select --install`
-- CMake 3.16+ and Git (e.g., via Homebrew: `brew install cmake git`)
+- CMake 3.28+ and Git (e.g., via Homebrew: `brew install cmake git`)
 - Optional: fio (for the demo): `brew install fio`
   - Not required: if not installed, the build will use a bundled fio (built from sources) by default.
 
@@ -116,37 +74,30 @@ Notes:
 - If `clang-format` is installed, the build will auto-format sources before compiling. If it isn’t, formatting is skipped with a message and the build proceeds.
 - You can switch to Ninja by configuring with `-G Ninja`; otherwise, Unix Makefiles are fine on macOS.
 
-Build (Release):
+### Build and Test
+
+Release:
 
 ```bash
-mkdir -p build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
+mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release ..
 cmake --build . -j
-ctest --output-on-failure
+ctest
 ```
 
-Build (Debug):
+Debug:
 
 ```bash
-cmake -S . -B build-debug -DCMAKE_BUILD_TYPE=Debug
-cmake --build build-debug -j
-(cd build-debug && ctest --output-on-failure)
+mkdir -p build-debug && cd build-debug && cmake -DCMAKE_BUILD_TYPE=Debug ..
+cmake --build . -j
+ctest
 ```
 
-Run only the project tests if you see upstream example tests in the list:
+Run the fio demo manually (requires fio installed, or use the bundled fio via CTest only):
 
 ```bash
-(cd build || cd build-debug) && ctest -R UnitTests --output-on-failure
-```
+# From the repo root, choose the snippet for your OS.
 
-Run the fio demo (requires fio installed, or use the bundled fio with CMake variable override):
-
-```bash
-# Option A: Use CMake demo target and let it auto-detect (or auto-build) bundled fio
-cmake --build build --target run_fio_demo -j1
-
-# Option B: Manual run using system fio (set env for macOS)
-# From the repo root:
+# macOS
 ENGINE=$(pwd)/build/libssdsim_engine.so
 export SSD_SIM_LIB_PATH="$(pwd)/build/libssdsim.dylib"
 export DYLD_LIBRARY_PATH="$(pwd)/build:$(pwd)/build/_deps/systemc-build/src"
@@ -156,11 +107,19 @@ fio \
   --name=demo --rw=randwrite --size=64M --bs=4k --iodepth=8 --numjobs=1 \
   --time_based --runtime=5
 
-# Option C: Force a specific fio for the CMake demo target
-# From your build directory:
-cmake -DFIO_EXE_OVERRIDE=/usr/local/bin/fio -S .. -B .
-cmake --build . --target run_fio_demo -j1
+# Linux
+ENGINE=$(pwd)/build/libssdsim_engine.so
+export SSD_SIM_LIB_PATH="$(pwd)/build/libssdsim.so"
+export LD_LIBRARY_PATH="$(pwd)/build:$(pwd)/build/_deps/systemc-build/src"
+export LD_PRELOAD="$(pwd)/build/libscmain_stub.so"
+fio \
+  --ioengine=external:"${ENGINE}" \
+  --filename=$(pwd)/config/default.json \
+  --name=demo --rw=randwrite --size=64M --bs=4k --iodepth=8 --numjobs=1 \
+  --time_based --runtime=5
 ```
+
+Note: The bundled fio is used by the CTest demo. For manual runs, use your system fio or a specific path.
 
 ### Customize the demo
 
@@ -176,40 +135,78 @@ You can tweak the CMake demo target via cache variables at configure time (or by
 - FIO_EXE_OVERRIDE: full path to a specific fio binary (otherwise the build will try a system fio or bundled source-built one)
 - BUILD_BUNDLED_FIO: ON by default; builds and uses the bundled fio if no system fio is found.
 
-Notes on macOS:
+Notes:
 
-- The CMake `run_fio_demo` target automatically sets SSD_SIM_LIB_PATH and DYLD_LIBRARY_PATH so the fio engine can find `libssdsim` and SystemC.
-- For manual runs, set SSD_SIM_LIB_PATH and DYLD_LIBRARY_PATH as shown above.
+- For manual runs, set SSD_SIM_LIB_PATH and the appropriate dynamic loader variables as shown in the snippets above.
 
-
-Examples:
+For the automated CTest demo, you can tweak defaults at configure time:
 
 ```bash
-# Reconfigure build with custom params (from your build dir)
-cmake -DDEMO_RW=randread -DDEMO_BS=16k -DDEMO_IODEPTH=16 -S .. -B .
-cmake --build . --target run_fio_demo -j1
-
-# Pin a specific fio binary
-cmake -DFIO_EXE_OVERRIDE=/usr/local/bin/fio -S .. -B .
-cmake --build . --target run_fio_demo -j1
+# From your build dir
+cmake -DDEMO_RW=randread -DDEMO_BS=16k -DDEMO_IODEPTH=16 -DDEMO_RUNTIME_S=2 -S .. -B .
 ```
 
-### Two demo entry points: what and why
+### Demo entry point
 
-- run_fio_demo (CMake target)
-  - Purpose: A developer-friendly, parameterized demo you run via your build tool.
-  - How: `cmake --build <build_dir> --target run_fio_demo`
-  - Notes: Uses the DEMO_* variables and optional `FIO_EXE_OVERRIDE`.
+- FioDemo (CTest, labeled "demo")
+  - Purpose: A fast, reproducible demo run via CTest (automation-ready).
+  - How: `(cd <build_dir> && ctest -L demo)` or simply run from your build directory:
+    
+    ```bash
+    ctest -L demo --output-on-failure
+    ```
+    
+  - Notes: Uses DEMO_* variables and optional `FIO_EXE_OVERRIDE` at configure time.
 
-- FioDemoShort (CTest, optional)
-  - Purpose: A super-fast smoke test for the end-to-end fio→engine→sim path.
-  - How: Enable during configure, then run with ctest.
-    - `cmake -DTOYSSD_DEMO_TEST=ON -S . -B build`
-    - `(cd build && ctest -R FioDemoShort --output-on-failure)`
-  - Defaults: 1s runtime, 4M total size. Disabled by default to keep unit tests lean.
-  - Note: When `TOYSSD_DEMO_TEST` is ON, the CMake configure step prints a status line confirming registration (e.g., "Registering 'FioDemoShort' (1s, 4M)").
+## Native Build (Linux)
 
-CI runs both: it enables `TOYSSD_DEMO_TEST=ON` to run `FioDemoShort`, then builds and runs `run_fio_demo` for a longer demonstration.
+Prerequisites (Ubuntu/Debian):
+
+```bash
+sudo apt update
+sudo apt install -y build-essential cmake git clang-format \
+    ninja-build ccache clang-tidy cppcheck fio python3 python3-pip
+```
+
+Notes:
+
+- `fio` is optional for manual runs; the project can build and use a bundled fio for the CTest demo when a system fio isn’t present.
+- You can switch to Ninja by configuring with `-G Ninja`.
+
+### Build and run tests
+
+Release:
+
+```bash
+mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . -j
+ctest
+```
+
+Debug:
+
+```bash
+mkdir -p build-debug && cd build-debug && cmake -DCMAKE_BUILD_TYPE=Debug ..
+cmake --build . -j
+ctest
+```
+
+Run the fio demo manually:
+
+```bash
+# From the repo root
+ENGINE=$(pwd)/build/libssdsim_engine.so
+export SSD_SIM_LIB_PATH="$(pwd)/build/libssdsim.so"
+export LD_LIBRARY_PATH="$(pwd)/build:$(pwd)/build/_deps/systemc-build/src"
+export LD_PRELOAD="$(pwd)/build/libscmain_stub.so"
+fio \
+  --ioengine=external:"${ENGINE}" \
+  --filename=$(pwd)/config/default.json \
+  --name=demo --rw=randwrite --size=64M --bs=4k --iodepth=8 --numjobs=1 \
+  --time_based --runtime=5
+```
+
+Note: For automation or if `fio` is not installed, prefer the CTest demo: `ctest -L demo` from your build directory.
 
 ## Repo Structure
 
@@ -223,6 +220,11 @@ CI runs both: it enables `TOYSSD_DEMO_TEST=ON` to run `FioDemoShort`, then build
 - `.github/workflows/` — CI pipeline
 
 See `docs/toy_ssd_simulator_design.md` for full design details.
+
+Tip (VS Code): You can use the built-in tasks to configure and build without typing commands:
+
+- Task: "Configure (Debug)" → runs `cmake -S . -B build-debug -DCMAKE_BUILD_TYPE=Debug`
+- Task: "Build (Debug)" → runs `cmake --build build-debug -j`
 
 ## Code formatting (clang-format)
 
@@ -248,21 +250,21 @@ cmake --build build --target format
 cmake --build build --target format-check
 ```
 
-Option B — directly with clang-format:
-
-```bash
-# Show version
-clang-format --version
-
-# Format in-place (tracked files only; skips build artifacts and deps)
-git ls-files '**/*.[ch]' '**/*.[ch]pp' ':!:build*/*' ':!:_deps/*' | xargs -r clang-format -i
-
-# Check for diffs (non-zero exit on violations)
-git ls-files '**/*.[ch]' '**/*.[ch]pp' ':!:build*/*' ':!:_deps/*' | xargs -r clang-format --dry-run --Werror
-```
-
 Notes:
 
 - If `clang-format` isn’t installed, CMake’s `format`/`format-check` targets become no-ops and print a hint.
 - On macOS, install via Homebrew: `brew install clang-format`.
 - The build also depends on `format`, so running `cmake --build` will format sources automatically when `clang-format` is available.
+
+---
+
+License: MIT (see `LICENSE`).
+
+## Troubleshooting
+
+- Dynamic library not found / unresolved symbols when running the manual fio demo:
+  - macOS: ensure `DYLD_LIBRARY_PATH` includes your `build` and `build/_deps/systemc-build/src` directories, and `SSD_SIM_LIB_PATH` points to `libssdsim.dylib`.
+  - Linux: ensure `LD_LIBRARY_PATH` includes your `build` and `build/_deps/systemc-build/src`, and `SSD_SIM_LIB_PATH` points to `libssdsim.so`; also set `LD_PRELOAD` to `libscmain_stub.so` as shown above.
+- Why is the fio ioengine `.so` even on macOS? The fio external ioengine convention uses `.so`, and this project follows that for compatibility.
+- `clang-format` missing: CMake's `format`/`format-check` targets will no-op with a hint; builds still proceed.
+- Prefer bundled vs system fio: For reproducible CI-like runs, rely on the CTest demo (bundled fio). For manual experimentation, install fio or provide a path via `-DFIO_EXE_OVERRIDE=/path/to/fio` at configure time.
