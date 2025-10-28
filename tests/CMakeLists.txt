@@ -8,9 +8,8 @@ add_executable(unit_tests
 )
 target_compile_features(unit_tests PRIVATE cxx_std_20)
 
-# Allow tests to include simulator headers directly
-# TODO: We should probably be including everything relative to the source root
-target_include_directories(unit_tests PRIVATE ${CMAKE_SOURCE_DIR}/sim)
+# Allow tests to include headers relative to the source root (e.g., "sim/...")
+target_include_directories(unit_tests PRIVATE ${CMAKE_SOURCE_DIR})
 
 # Link the core simulator, SystemC, and GoogleTest main
 target_link_libraries(unit_tests PRIVATE simlib systemc gtest_main)

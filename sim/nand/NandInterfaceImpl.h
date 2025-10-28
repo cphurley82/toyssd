@@ -1,7 +1,9 @@
+// Copyright Chris Hurley
 #pragma once
-#include "NandInterface.h"
-#include "NandModel.h"
-#include "systemc"
+#include <systemc>
+
+#include "sim/nand/NandInterface.h"
+#include "sim/nand/NandModel.h"
 #include "tlm_utils/simple_initiator_socket.h"
 
 struct NandInterfaceImpl : sc_core::sc_module, INandInterface {

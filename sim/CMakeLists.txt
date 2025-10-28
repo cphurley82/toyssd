@@ -14,6 +14,7 @@ add_dependencies(simlib format)
 # when they link to simlib. We also expose the C API headers from ../api for
 # convenience while building from source.
 target_include_directories(simlib PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../api>
   $<INSTALL_INTERFACE:include/toyssd/sim>

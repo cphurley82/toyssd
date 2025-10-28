@@ -1,9 +1,10 @@
+// Copyright Chris Hurley
 #pragma once
 #include <memory>
 
-#include "../host/HostInterface.h"
-#include "../nand/NandInterface.h"
-#include "FTL.h"
+#include "sim/fw/FTL.h"
+#include "sim/host/HostInterface.h"
+#include "sim/nand/NandInterface.h"
 #include "systemc"
 
 struct Firmware : sc_core::sc_module {

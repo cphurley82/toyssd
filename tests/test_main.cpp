@@ -1,3 +1,4 @@
+// Copyright Chris Hurley
 #include <gtest/gtest.h>
 
 #include "systemc"

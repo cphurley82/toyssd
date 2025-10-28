@@ -1,0 +1,11 @@
+# Python tooling for toyssd
+# Install with: pip install -r requirements.txt
+
+# Build helper
+cmake>=3.28
+
+# C/C++ style linter
+cpplint>=1.6.1
+
+# Optional: speed up installs and wheels
+wheel>=0.42

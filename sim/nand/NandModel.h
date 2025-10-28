@@ -1,6 +1,9 @@
+// Copyright Chris Hurley
 #pragma once
-#include "systemc"
-#include "tlm.h"
+#include <tlm.h>
+
+#include <systemc>
+
 #include "tlm_utils/simple_target_socket.h"
 
 struct NandCmd {

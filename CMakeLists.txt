@@ -70,20 +70,20 @@ include(CTest)
 # Find clang-format executable
 find_program(CLANG_FORMAT_EXE NAMES clang-format clang-format-18 clang-format-17)
 
+# Define the canonical list of project sources/headers once for reuse
+file(GLOB_RECURSE TOYSSD_FORMAT_SOURCES
+  CONFIGURE_DEPENDS
+  ${CMAKE_SOURCE_DIR}/api/*.[ch]pp
+  ${CMAKE_SOURCE_DIR}/api/*.[ch]
+  ${CMAKE_SOURCE_DIR}/sim/*.[ch]pp
+  ${CMAKE_SOURCE_DIR}/sim/*.[ch]
+  ${CMAKE_SOURCE_DIR}/tests/*.[ch]pp
+  ${CMAKE_SOURCE_DIR}/tests/*.[ch]
+  ${CMAKE_SOURCE_DIR}/fio_plugin/*.[ch]
+)
+
 if(CLANG_FORMAT_EXE)
   message(STATUS "Found clang-format: ${CLANG_FORMAT_EXE}")
-  
-  # Find all source files to format
-  file(GLOB_RECURSE TOYSSD_FORMAT_SOURCES
-    CONFIGURE_DEPENDS
-    ${CMAKE_SOURCE_DIR}/api/*.[ch]pp
-    ${CMAKE_SOURCE_DIR}/api/*.[ch]
-    ${CMAKE_SOURCE_DIR}/sim/*.[ch]pp
-    ${CMAKE_SOURCE_DIR}/sim/*.[ch]
-    ${CMAKE_SOURCE_DIR}/tests/*.[ch]pp
-    ${CMAKE_SOURCE_DIR}/tests/*.[ch]
-    ${CMAKE_SOURCE_DIR}/fio_plugin/*.[ch]
-  )
 
   # Target 'format' will format all C/C++ sources in key folders.
   add_custom_target(format
@@ -109,6 +109,38 @@ else() # No CLANG_FORMAT_EXE
 endif() # if(CLANG_FORMAT_EXE)
 
 # (format dependencies are added after targets are defined below)
+
+#########################
+# cpplint (style checks) #
+#########################
+
+# Register a CTest that runs cpplint over the same files used by clang-format.
+# Enabled only when BUILD_TESTING=ON and cpplint is importable via Python.
+if(BUILD_TESTING)
+  # Discover a Python interpreter
+  find_package(Python3 COMPONENTS Interpreter QUIET)
+
+  if(Python3_Interpreter_FOUND)
+    # Check if cpplint can be imported
+    execute_process(
+      COMMAND ${Python3_EXECUTABLE} -c "import importlib.util,sys; sys.exit(0 if importlib.util.find_spec('cpplint') else 1)"
+      RESULT_VARIABLE CPPLINT_IMPORT_RESULT
+      OUTPUT_QUIET ERROR_QUIET
+    )
+
+    if(CPPLINT_IMPORT_RESULT EQUAL 0)
+      # Use default cpplint settings; no custom filters/linelength
+      add_test(NAME cpplint
+               COMMAND ${Python3_EXECUTABLE} -m cpplint --quiet ${TOYSSD_FORMAT_SOURCES}
+               WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+      set_tests_properties(cpplint PROPERTIES LABELS "lint;style")
+    else()
+      message(STATUS "cpplint Python module not found; 'cpplint' CTest will not be added. Install via 'pip install -r requirements.txt'.")
+    endif()
+  else()
+    message(STATUS "Python3 interpreter not found; skipping 'cpplint' CTest.")
+  endif()
+endif()
 
 ############################
 # External Dependencies    #
@@ -158,6 +190,7 @@ add_subdirectory(sim)
 add_library(ssdsim SHARED api/ssdsim_api.cpp api/sc_main_stub.cpp)
 target_compile_features(ssdsim PUBLIC cxx_std_20)
 target_include_directories(ssdsim PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/api>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/toyssd>
 )

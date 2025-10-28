@@ -1,3 +1,4 @@
+// Copyright Chris Hurley
 #pragma once
 #include <cstdint>
 #include <unordered_map>
@@ -14,12 +15,12 @@ class FTL {
 
   PhysicalPage map_write(uint64_t lba) {
     PhysicalPage p{0, next_block, next_page};
-    l2p[(size_t)lba] = p;
+    l2p[static_cast<size_t>(lba)] = p;
     advance();
     return p;
   }
   PhysicalPage map_read(uint64_t lba) const {
-    auto it = l2p.find((size_t)lba);
+    auto it = l2p.find(static_cast<size_t>(lba));
     if (it != l2p.end()) return it->second;
     return PhysicalPage{0, 0, 0};
   }

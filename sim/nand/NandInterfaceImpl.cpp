@@ -1,6 +1,7 @@
-#include "NandInterfaceImpl.h"
+// Copyright Chris Hurley
+#include "sim/nand/NandInterfaceImpl.h"
 
-#include "../fw/FTL.h"  // for PhysicalPage definition
+#include "sim/fw/FTL.h"  // for PhysicalPage definition
 
 sc_core::sc_time NandInterfaceImpl::read(const PhysicalPage& p,
                                          uint8_t* /*dst*/) {

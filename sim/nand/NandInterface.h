@@ -1,7 +1,7 @@
+// Copyright Chris Hurley
 #pragma once
 #include <cstdint>
-
-#include "systemc"
+#include <systemc>  // NOLINT because this should be after C++ system headers
 
 struct PhysicalPage;
 

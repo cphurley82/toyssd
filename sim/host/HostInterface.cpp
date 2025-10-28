@@ -1,3 +1,4 @@
+// Copyright Chris Hurley
 #include "host/HostInterface.h"
 
 #include <cstring>
@@ -7,13 +8,13 @@
 #include "../fw/Firmware.h"
 #include "systemc"
 
-using namespace sc_core;
+// Avoid using-directives; use explicit sc_core:: qualifiers.
 
 static HostInterface* g_host = nullptr;
 
 int HostInterface::submit(const IORequest& r) {
   auto* req = new IORequest(r);
-  req->submit_ts = sc_time_stamp();
+  req->submit_ts = sc_core::sc_time_stamp();
   if (!to_fw.nb_write(req)) {
     delete req;
     return 1;  // busy
@@ -27,7 +28,8 @@ int HostInterface::poll(int max_cpls, ssd_cpl_t* out) {
   while (n < max_cpls && from_fw.nb_read(c)) {
     out[n].user_tag = c.user_tag;
     out[n].status = c.status;
-    out[n].ns = (c.complete_ts.value() - SC_ZERO_TIME.value());  // raw ticks
+    // raw ticks
+    out[n].ns = (c.complete_ts.value() - sc_core::SC_ZERO_TIME.value());
     ++n;
   }
   return n;
@@ -40,11 +42,11 @@ static std::unique_ptr<sc_core::sc_simcontext> simctx;
 int init_cxx(const char* /*cfg*/) {
   if (g_host) return 0;
   // Build a minimal topology similar to sc_main
-  simctx.reset(new sc_simcontext());
+  simctx.reset(new sc_core::sc_simcontext());
   // Construct a Top in this translation unit (defined in sim/main.cpp)
   auto* top = ssdsim_internal::create_top(&g_host);
   // End of elaboration and initialize delta cycles
-  sc_start(SC_ZERO_TIME);
+  sc_core::sc_start(sc_core::SC_ZERO_TIME);
   // don't start an infinite loop; simulation advances on poll
   return 0;
 }
@@ -52,8 +54,12 @@ int init_cxx(const char* /*cfg*/) {
 int submit_cxx(void* user_tag, uint64_t lba, uint32_t size_bytes, bool is_write,
                void* buf) {
   if (!g_host) return 1;
-  IORequest r{user_tag, lba,           size_bytes,
-              is_write, (uint8_t*)buf, sc_time_stamp()};
+  IORequest r{user_tag,
+              lba,
+              size_bytes,
+              is_write,
+              reinterpret_cast<uint8_t*>(buf),
+              sc_core::sc_time_stamp()};
   return g_host->submit(r);
 }
 
@@ -64,7 +70,7 @@ int poll_cxx(int max_cpls, ssd_cpl_t* out_cpls) {
   int total = 0;
   for (int iter = 0; iter < 100 && total < max_cpls; ++iter) {
     // Advance simulation time by a small amount; adjust as needed
-    sc_start(sc_time(10, SC_US));
+    sc_core::sc_start(sc_core::sc_time(10, sc_core::SC_US));
     // Drain completions from firmware
     int n = g_host->poll(max_cpls - total, out_cpls + total);
     if (n > 0) {

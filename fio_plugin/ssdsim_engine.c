@@ -1,3 +1,4 @@
+// Copyright Chris Hurley
 // Minimal fio ioengine that forwards to libssdsim.so
 #include <dlfcn.h>
 #include <stdio.h>
@@ -13,7 +14,7 @@
 #undef bool
 #endif
 #endif
-#include "fio.h"
+#include <fio.h>
 
 typedef int (*fn_init_t)(const char*);
 typedef int (*fn_submit_t)(const void*);

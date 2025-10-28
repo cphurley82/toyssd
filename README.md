@@ -268,3 +268,35 @@ License: MIT (see `LICENSE`).
 - Why is the fio ioengine `.so` even on macOS? The fio external ioengine convention uses `.so`, and this project follows that for compatibility.
 - `clang-format` missing: CMake's `format`/`format-check` targets will no-op with a hint; builds still proceed.
 - Prefer bundled vs system fio: For reproducible CI-like runs, rely on the CTest demo (bundled fio). For manual experimentation, install fio or provide a path via `-DFIO_EXE_OVERRIDE=/path/to/fio` at configure time.
+
+## Python venv + cpplint (C++ style checks)
+
+This repo includes a `cpplint` CTest to check basic Google-style C++ conventions. It's optional and only added when testing is enabled and `cpplint` is installed.
+
+### Create a virtual environment (macOS/Linux)
+
+```bash
+# From repo root (macOS zsh / Linux bash)
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+Notes:
+
+- Deactivate later with `deactivate`.
+- If your system Python is managed by pyenv/Homebrew, ensure `python3` points to your intended interpreter.
+
+### Configure, build, and run cpplint via CTest
+
+```bash
+# Configure (Debug) and build
+cmake -S . -B build-debug -DCMAKE_BUILD_TYPE=Debug
+cmake --build build-debug -j
+
+# Run only the cpplint test
+ctest --test-dir build-debug -R cpplint
+```
+
+If `cpplint` or `Python3` isn't found, the cpplint CTest is skipped and a hint is printed during CMake configure. The test uses cpplint defaults.

@@ -1,3 +1,4 @@
+// Copyright Chris Hurley
 // Provide a dummy sc_main so dlopen() of libssdsim works even when
 // SystemC is linked but no sc_main is present in the hosting process.
 // Real entrypoints are provided by GoogleTest (tests) or sim_main.

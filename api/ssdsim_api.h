@@ -1,3 +1,4 @@
+// Copyright Chris Hurley
 #pragma once
 #include <stdint.h>
 

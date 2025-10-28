@@ -1,10 +1,11 @@
+// Copyright Chris Hurley
 #pragma once
 #include <cstdint>
 #include <mutex>
 #include <queue>
 #include <vector>
 
-#include "../api/ssdsim_api.h"
+#include "api/ssdsim_api.h"
 #include "systemc"
 
 struct IORequest {

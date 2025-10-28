@@ -1,8 +1,9 @@
-#include "Firmware.h"
+// Copyright Chris Hurley
+#include "sim/fw/Firmware.h"
 
-#include "../nand/NandInterface.h"
+#include "sim/nand/NandInterface.h"
 
-using namespace sc_core;
+// Avoid using-directives; use explicit sc_core:: qualifiers.
 
 void Firmware::run() {
   while (true) {
@@ -10,7 +11,7 @@ void Firmware::run() {
     // Minimal FTL
     auto ppa = r->is_write ? ftl.map_write(r->lba) : ftl.map_read(r->lba);
 
-    sc_time delay = SC_ZERO_TIME;
+    sc_core::sc_time delay = sc_core::SC_ZERO_TIME;
     if (nand_if) {
       if (r->is_write)
         delay = nand_if->program(ppa, r->buf);
@@ -19,7 +20,7 @@ void Firmware::run() {
     }
 
     wait(delay + ctrl_overhead());
-    out.write(Completion{r->user_tag, 0, sc_time_stamp()});
+    out.write(Completion{r->user_tag, 0, sc_core::sc_time_stamp()});
     delete r;
   }
 }

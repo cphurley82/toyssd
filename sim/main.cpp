@@ -1,10 +1,10 @@
-#include "Top.h"
-#include "systemc"
+// Copyright Chris Hurley
+#include <systemc>
 
-using namespace sc_core;
+#include "sim/Top.h"
 
 int sc_main(int argc, char* argv[]) {
   Top top{"top"};
-  sc_start();  // Run until no events (the host is driven by C API)
+  sc_core::sc_start();  // Run until no events (the host is driven by C API)
   return 0;
 }

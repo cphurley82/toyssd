@@ -1,6 +1,7 @@
+// Copyright Chris Hurley
 #include <gtest/gtest.h>
 
-#include "nand/NandModel.h"
+#include "sim/nand/NandModel.h"
 
 TEST(NandModelTest, LatencyOrder) {
   NandModel nand("nand");
