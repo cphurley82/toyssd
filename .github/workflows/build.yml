@@ -25,11 +25,10 @@ jobs:
           load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      - name: Install Python tools and Configure + Build in Docker
+      - name: Configure + Build in Docker
         run: |
-          # Ensure cpplint is available during CMake configure so the CTest is registered
           docker run --rm -t -v "$PWD":/src -w /src toyssd \
-            bash -lc "python3 -m pip install --upgrade pip && python3 -m pip install -r requirements.txt && cmake -S . -B build -DCMAKE_BUILD_TYPE=Release"
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
           docker run --rm -t -v "$PWD":/src -w /src toyssd \
             cmake --build build -j
       - name: Archive build directory (tar.gz)

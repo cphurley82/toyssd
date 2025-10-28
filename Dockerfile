@@ -38,13 +38,20 @@ ENV DEBIAN_FRONTEND=noninteractive
 # - We clean apt lists at the end to reduce layer size.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential cmake git pkg-config \
-    python3 python3-pip \
+    python3 python3-pip python3-venv \
     clang-format clang-tidy cppcheck \
     libaio-dev zlib1g-dev libnuma-dev fio \
     ca-certificates curl wget \
  && (apt-get install -y --no-install-recommends libaio1 \
      || apt-get install -y --no-install-recommends libaio1t64) \
  && rm -rf /var/lib/apt/lists/*
+
+# Install Python requirements system-wide. On Ubuntu 24.04, pip enforces
+# externally-managed environments (PEP 668); use --break-system-packages to
+# install tooling like cpplint without a venv.
+COPY requirements.txt /tmp/requirements.txt
+RUN python3 -m pip install --break-system-packages -r /tmp/requirements.txt \
+ && rm -f /tmp/requirements.txt
 
 # Default working directory for bind-mounted source
 WORKDIR /src
