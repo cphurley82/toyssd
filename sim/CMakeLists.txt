@@ -43,3 +43,6 @@ target_link_libraries(sim_main PRIVATE simlib systemc)
 set_target_properties(sim_main PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
 )
+
+# Subdirectory for NAND-specific configuration and tests
+add_subdirectory(nand)

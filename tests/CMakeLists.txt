@@ -4,7 +4,6 @@
 add_executable(unit_tests
   test_main.cpp
   test_ftl.cpp
-  test_nand.cpp
 )
 target_compile_features(unit_tests PRIVATE cxx_std_20)
 
