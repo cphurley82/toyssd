@@ -1,15 +1,37 @@
 // Copyright Chris Hurley
 #pragma once
-#include <tlm.h>
 
-#include <systemc>
+#include <cstdint>
+#include <optional>
+#include <span>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
+#include "systemc"
+#include "tlm"
 #include "tlm_utils/simple_target_socket.h"
 
 struct NandCmd {
   enum class Op { READ, PROGRAM, ERASE } op;
-  uint32_t die{0}, block{0}, page{0};
-  uint8_t* data{nullptr};
+
+  struct Address {
+    uint32_t channel{0};   // Channel (shared bus)
+    uint32_t ce{0};        // Chip Enable selects a package/die on the channel
+    uint32_t lun{0};       // LUN within the die
+    uint32_t plane{0};     // Plane within the LUN
+    uint32_t block{0};     // Block within the plane
+    uint32_t wordline{0};  // Physical row within the block (physical page)
+    uint32_t logical_page{0};  // Logical page/program step within the wordline
+  } addr;
+
+  // Optional data payload (e.g., page data). For READ, simulators may ignore
+  // or fill this buffer. For PROGRAM, simulators may read from this buffer.
+  // Data is optional by design.
+  std::optional<std::span<uint8_t>> data{};
+
+  // Separate metadata buffer (OOB/spare area). Empty span means no metadata.
+  std::span<uint8_t> metadata{};
 };
 
 struct NandModel : sc_core::sc_module {
@@ -22,4 +44,13 @@ struct NandModel : sc_core::sc_module {
   void b_transport(tlm::tlm_generic_payload& gp, sc_core::sc_time& delay);
   // Overload for custom payload shortcut (not standard TLM; placeholder)
   void b_transport(NandCmd& cmd, sc_core::sc_time& delay);
+
+ private:
+  struct PageStore {
+    std::vector<uint8_t> data;
+    std::vector<uint8_t> metadata;
+  };
+  // Keyed by a composite string of the full address
+  // (channel/ce/lun/plane/block/wordline/logical_page)
+  std::unordered_map<std::string, PageStore> pages_;
 };
