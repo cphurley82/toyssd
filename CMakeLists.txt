@@ -26,6 +26,10 @@ option(TOYSSD_BUILD_FIO_ENGINE "Build bundled fio external ioengine" ON)
 option(TOYSSD_BUILD_DEMOS "Add demo custom targets that run fio with the engine" ON)
 option(BUILD_BUNDLED_FIO "Build bundled fio from fetched sources if no system fio is found" ON)
 
+# Code coverage (local + CI)
+option(ENABLE_CODE_COVERAGE "Enable code coverage instrumentation and add a 'coverage' target" OFF)
+set(CODE_COVERAGE_THRESHOLD 20 CACHE STRING "Fail if line coverage is below this percent when running the 'coverage' target")
+
 # Encourage out-of-source builds to keep generated files out of the source tree.
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
   message(WARNING "In-source build detected. It's recommended to use an out-of-source build:\n  cmake -S . -B build && cmake --build build")
@@ -49,6 +53,27 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 # Developer quality-of-life: emit compile_commands.json for IDEs and tooling
 # (clangd, vscode-cpptools, etc).
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Generate compile_commands.json" FORCE)
+
+# If coverage is enabled, set appropriate compile/link flags early so all
+# targets inherit instrumentation.
+if(ENABLE_CODE_COVERAGE)
+  message(STATUS "Code coverage instrumentation is ENABLED")
+  # Favor debug-friendly builds for accurate coverage
+  if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE Debug CACHE STRING "Build type" FORCE)
+  endif()
+
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options(-O0 -g --coverage)
+    add_link_options(--coverage)
+  elseif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    # Use GCC-style coverage flags so gcovr can read data via llvm-cov gcov
+    add_compile_options(-O0 -g -fprofile-arcs -ftest-coverage)
+    add_link_options(-fprofile-arcs -ftest-coverage)
+  else()
+    message(WARNING "Coverage enabled, but compiler '${CMAKE_CXX_COMPILER_ID}' is not explicitly supported. Proceeding without special flags.")
+  endif()
+endif()
 
 ##############################
 # CMake modules & utilities  #
@@ -333,6 +358,68 @@ if(TOYSSD_BUILD_FIO_ENGINE)
     set_tests_properties(FioDemo PROPERTIES LABELS "demo")
   endif()
 endif() # TOYSSD_BUILD_FIO_ENGINE
+
+########################################
+# Coverage target (gcovr)
+########################################
+if(ENABLE_CODE_COVERAGE)
+  # Try to locate gcovr; required to generate reports and enforce threshold
+  find_program(GCOVR_EXE NAMES gcovr)
+  if(NOT GCOVR_EXE)
+    message(STATUS "gcovr not found. Install via 'pip install gcovr' or 'pipx install gcovr'. A helper 'coverage' target will print instructions.")
+  endif()
+
+  # Exclude external deps, tests, and build artifacts by default.
+  # Quote regexes to prevent shell glob expansion on macOS/Linux.
+  set(COVERAGE_EXCLUDES
+    --exclude ".*_deps/.*"
+    --exclude ".*/tests/.*"
+    --exclude ".*/Testing/.*"
+    --exclude ".*/build.*/.*"
+  )
+
+  set(COVERAGE_DIR ${CMAKE_BINARY_DIR}/coverage)
+  file(MAKE_DIRECTORY ${COVERAGE_DIR})
+
+  if(GCOVR_EXE)
+    add_custom_target(coverage
+      COMMAND ${CMAKE_COMMAND} -E echo "Running tests and generating coverage report - threshold ${CODE_COVERAGE_THRESHOLD}%"
+      COMMAND ${CMAKE_COMMAND} -E make_directory ${COVERAGE_DIR}
+      COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -LE demo
+      COMMAND ${GCOVR_EXE}
+              --root ${CMAKE_SOURCE_DIR}
+              --print-summary
+              --xml ${COVERAGE_DIR}/coverage.xml
+              --html --html-details -o ${COVERAGE_DIR}/index.html
+              --fail-under-line ${CODE_COVERAGE_THRESHOLD}
+              --exclude='.*_deps/.*'
+              --exclude='.*/tests/.*'
+              --exclude='.*/Testing/.*'
+              --exclude='.*/build.*/.*'
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      COMMENT "gcovr: create XML and HTML reports; enforce minimum coverage"
+    )
+  else()
+    # Provide a helper target that explains how to enable coverage tooling
+    add_custom_target(coverage
+      COMMAND ${CMAKE_COMMAND} -E echo "ERROR: 'gcovr' not found. Install with: python3 -m pip install --user gcovr"
+      COMMAND ${CMAKE_COMMAND} -E false
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+      COMMENT "gcovr not found"
+    )
+  endif()
+
+  # Ensure unit tests are built before attempting to run ctest from the target
+  if(TARGET unit_tests)
+    add_dependencies(coverage unit_tests)
+  endif()
+  if(TARGET ssdsim)
+    add_dependencies(coverage ssdsim)
+  endif()
+  if(TARGET simlib)
+    add_dependencies(coverage simlib)
+  endif()
+endif()
 
 ########################################
 # Install & Package (basic)            #

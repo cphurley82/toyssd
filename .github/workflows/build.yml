@@ -122,3 +122,31 @@ jobs:
         run: |
           docker run --rm -t -v "$PWD":/src -w /src toyssd \
             ctest --test-dir build -L demo --output-on-failure
+
+  coverage:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: .
+      - name: Load Docker image
+        run: |
+          docker load -i toyssd-image.tar
+      - name: Run coverage build and report in Docker
+        run: |
+          docker run --rm -t -v "$PWD":/src -w /src toyssd bash -lc '
+            cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug -DENABLE_CODE_COVERAGE=ON -DCODE_COVERAGE_THRESHOLD=60 && \
+            cmake --build build-coverage -j && \
+            cmake --build build-coverage --target coverage
+          '
+      - name: Upload coverage report (HTML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: build-coverage/coverage/
+          if-no-files-found: warn

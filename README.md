@@ -300,3 +300,45 @@ ctest --test-dir build-debug -R cpplint
 ```
 
 If `cpplint` or `Python3` isn't found, the cpplint CTest is skipped and a hint is printed during CMake configure. The test uses cpplint defaults.
+
+## Code coverage (local + CI)
+
+This repo provides an opt-in coverage build that works locally and in CI using gcovr. When enabled, tests run with instrumentation and a `coverage` target generates HTML and XML reports and enforces a minimum threshold.
+
+### Install tools
+
+- Python + gcovr
+  - pip: `python3 -m pip install --user gcovr` (or `pipx install gcovr`)
+  - or Homebrew: `brew install gcovr`
+  - Alternatively, `pip install -r requirements.txt` (includes gcovr)
+- macOS (AppleClang): install LLVM tools for best results: `brew install llvm`
+  - gcovr will auto-detect `llvm-cov` when present.
+
+### Run locally
+
+```bash
+# Configure with coverage enabled (Debug recommended) and set a threshold
+cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug \
+  -DENABLE_CODE_COVERAGE=ON -DCODE_COVERAGE_THRESHOLD=60
+
+# Build tests and libs
+cmake --build build-coverage -j
+
+# Run tests, generate HTML report, and enforce the threshold
+cmake --build build-coverage --target coverage
+
+# Open the HTML report
+open build-coverage/coverage/index.html  # macOS
+# xdg-open build-coverage/coverage/index.html  # Linux
+```
+
+Notes:
+
+- Threshold is enforced via gcovr's `--fail-under-lines`; adjust with `-DCODE_COVERAGE_THRESHOLD=<N>`.
+- External deps and test sources are excluded by default. Customize in `CMakeLists.txt` if needed.
+- On macOS with AppleClang, the build uses GCC-style coverage flags and, when available, `llvm-cov gcov` to read coverage data.
+
+### CI
+
+GitHub Actions includes a `coverage` job that builds with instrumentation, runs gcovr, enforces a threshold (60% by default), and uploads the HTML report as an artifact.
+
