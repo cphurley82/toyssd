@@ -182,6 +182,10 @@ v
 - Optional in-memory data array for end-to-end read/write validation.
 - Latency parameters (`t_read`, `t_prog`, `t_erase`) configurable via JSON.
 
+#### 6. Validation Checkers (design)
+
+To ensure proper use of the NAND model by SoC hardware/firmware, a modular checker framework validates geometry bounds, protocol ordering (erase → program → read), shared bus usage, die/plane concurrency, and basic timing windows. The checkers are configured via JSON (with programmatic and CLI overrides) and are designed to be testable independently of the NAND model. See the dedicated design document in `docs/nand_checker_design.md` for interfaces, configuration schema, and the catalog of checkers.
+
 ---
 
 ## Test-Driven Development (TDD)
