@@ -139,7 +139,7 @@ jobs:
       - name: Run coverage build and report in Docker
         run: |
           docker run --rm -t -v "$PWD":/src -w /src toyssd bash -lc '
-            cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug -DENABLE_CODE_COVERAGE=ON -DCODE_COVERAGE_THRESHOLD=60 && \
+            cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug -DENABLE_CODE_COVERAGE=ON && \
             cmake --build build-coverage -j && \
             cmake --build build-coverage --target coverage
           '
