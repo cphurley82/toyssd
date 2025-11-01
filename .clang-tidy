@@ -1,0 +1,4 @@
+Checks: "-*,clang-analyzer-*,bugprone-*,performance-*,modernize-*,readability-*"
+WarningsAsErrors: ""
+HeaderFilterRegex: "^(api|sim|fio_plugin)/"
+FormatStyle: none

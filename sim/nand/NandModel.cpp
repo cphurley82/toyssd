@@ -7,13 +7,13 @@
 #include <vector>
 
 namespace {
-std::string make_key(const NandCmd::Address& a) {
+std::string make_key(const NandCmd::Address& addr) {
   // Compose a compact, stable key from all address fields
   // Format: ch/ce/lun/plane/block/wordline/logical_page
-  return std::to_string(a.channel) + "/" + std::to_string(a.ce) + "/" +
-         std::to_string(a.lun) + "/" + std::to_string(a.plane) + "/" +
-         std::to_string(a.block) + "/" + std::to_string(a.wordline) + "/" +
-         std::to_string(a.logical_page);
+  return std::to_string(addr.channel) + "/" + std::to_string(addr.ce) + "/" +
+         std::to_string(addr.lun) + "/" + std::to_string(addr.plane) + "/" +
+         std::to_string(addr.block) + "/" + std::to_string(addr.wordline) +
+         "/" + std::to_string(addr.logical_page);
 }
 }  // namespace
 
@@ -40,34 +40,45 @@ void NandModel::b_transport(NandCmd& cmd, sc_core::sc_time& /*delay*/) {
       break;
     }
     case NandCmd::Op::READ: {
-      auto it = pages_.find(key);
-      if (it != pages_.end()) {
-        const PageStore& store = it->second;
+      auto it_pages = pages_.find(key);
+      if (it_pages != pages_.end()) {
+        const PageStore& store = it_pages->second;
         if (cmd.data.has_value()) {
           auto dst = cmd.data.value();
-          const size_t n = std::min(dst.size(), store.data.size());
-          if (n > 0) std::memcpy(dst.data(), store.data.data(), n);
+          const size_t copy_len = std::min(dst.size(), store.data.size());
+          if (copy_len > 0) {
+            std::memcpy(dst.data(), store.data.data(), copy_len);
+          }
           // Zero-fill any remaining bytes in the destination buffer to make
           // behavior deterministic for callers that provide larger buffers
           // than what was stored (or when no data was stored).
-          if (dst.size() > n) {
-            std::memset(dst.data() + n, 0, dst.size() - n);
+          if (dst.size() > copy_len) {
+            std::memset(dst.data() + copy_len, 0, dst.size() - copy_len);
           }
         }
         if (!cmd.metadata.empty()) {
-          const size_t n = std::min(cmd.metadata.size(), store.metadata.size());
-          if (n > 0) std::memcpy(cmd.metadata.data(), store.metadata.data(), n);
-          if (cmd.metadata.size() > n)
-            std::memset(cmd.metadata.data() + n, 0, cmd.metadata.size() - n);
+          const size_t meta_copy =
+              std::min(cmd.metadata.size(), store.metadata.size());
+          if (meta_copy > 0) {
+            std::memcpy(cmd.metadata.data(), store.metadata.data(), meta_copy);
+          }
+          if (cmd.metadata.size() > meta_copy) {
+            std::memset(cmd.metadata.data() + meta_copy, 0,
+                        cmd.metadata.size() - meta_copy);
+          }
         }
       } else {
         // Page not programmed/erased: return erased state (0xFF)
         if (cmd.data.has_value()) {
           auto dst = cmd.data.value();
-          if (!dst.empty()) std::memset(dst.data(), 0xFF, dst.size());
+          constexpr unsigned char kErasedByte = 0xFF;
+          if (!dst.empty()) {
+            std::memset(dst.data(), kErasedByte, dst.size());
+          }
         }
         if (!cmd.metadata.empty()) {
-          std::memset(cmd.metadata.data(), 0xFF, cmd.metadata.size());
+          constexpr unsigned char kErasedByte = 0xFF;
+          std::memset(cmd.metadata.data(), kErasedByte, cmd.metadata.size());
         }
       }
       break;
@@ -76,7 +87,7 @@ void NandModel::b_transport(NandCmd& cmd, sc_core::sc_time& /*delay*/) {
       // Remove all pages within the same block across all pages/mlc bits
       // that match the provided channel/ce/lun/plane/block
       std::vector<std::string> to_erase;
-      for (const auto& kv : pages_) {
+      for (const auto& key_value : pages_) {
         // Parse key minimally: since format is fixed, we can match prefix
         // prefix = ch/ce/lun/plane/block/
         const std::string prefix = std::to_string(cmd.addr.channel) + "/" +
@@ -84,11 +95,13 @@ void NandModel::b_transport(NandCmd& cmd, sc_core::sc_time& /*delay*/) {
                                    std::to_string(cmd.addr.lun) + "/" +
                                    std::to_string(cmd.addr.plane) + "/" +
                                    std::to_string(cmd.addr.block) + "/";
-        if (kv.first.rfind(prefix, 0) == 0) {
-          to_erase.push_back(kv.first);
+        if (key_value.first.starts_with(prefix)) {
+          to_erase.push_back(key_value.first);
         }
       }
-      for (const auto& k : to_erase) pages_.erase(k);
+      for (const auto& key : to_erase) {
+        pages_.erase(key);
+      }
       break;
     }
   }

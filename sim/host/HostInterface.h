@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "api/ssdsim_api.h"
+#include "sim/util/Compat.h"
 #include "systemc"
 
 struct IORequest {
@@ -33,8 +34,8 @@ struct HostInterface : sc_core::sc_module {
 
   SC_CTOR(HostInterface) {}
 
-  int submit(const IORequest& req);
-  int poll(int max_cpls, ssd_cpl_t* out_cpls);
+  int submit(const IORequest& request);
+  int poll(int max_completions, ssd_cpl_t* out);
 };
 
 // C API adapters

@@ -10,6 +10,7 @@ add_library(simlib SHARED
 target_compile_features(simlib PUBLIC cxx_std_20)
 add_dependencies(simlib format)
 toyssd_apply_werror(simlib)
+toyssd_apply_clang_tidy(simlib)
 
 # Public include directories so downstream targets can include sim headers
 # when they link to simlib. We also expose the C API headers from ../api for
@@ -45,6 +46,7 @@ set_target_properties(sim_main PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
 )
 toyssd_apply_werror(sim_main)
+toyssd_apply_clang_tidy(sim_main)
 
 # Subdirectory for NAND-specific configuration and tests
 add_subdirectory(nand)

@@ -19,6 +19,7 @@ build-*/
 __pycache__/
 *.pyc
 .venv/
+uv.lock
 
 # IDE
 .vscode/
@@ -30,3 +31,4 @@ Thumbs.db
 
 # Tests
 Testing/**
+

@@ -4,6 +4,7 @@
 
 #include "sim/nand/NandInterface.h"
 #include "sim/nand/NandModel.h"
+#include "sim/util/Compat.h"
 #include "tlm_utils/simple_initiator_socket.h"
 
 struct NandInterfaceImpl : sc_core::sc_module, INandInterface {

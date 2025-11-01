@@ -89,7 +89,13 @@ def env_check(c):
         warn("clang-format not found (optional). CMake format targets will no-op.")
         missing_optional.append("clang-format")
 
-    # clang-tidy checks removed for now
+    # Optional: clang-tidy
+    ct_ok, ct_ver = run_silent("clang-tidy --version")
+    if ct_ok:
+        ok(ct_ver.splitlines()[0])
+    else:
+        warn("clang-tidy not found (optional). Enable via Homebrew or your toolchain; Invoke cpp_analyze will skip if unavailable.")
+        missing_optional.append("clang-tidy")
 
     # Optional: cpplint — prefer venv module (for CTest), then CLI as fallback for version reporting
     cpplint_present, _ = run_silent("uv run python -c 'import importlib.util,sys; sys.exit(0 if importlib.util.find_spec(\"cpplint\") else 1)'")
@@ -135,12 +141,14 @@ def env_check(c):
 
 
 @task
-def cpp_configure(c, build_type="Debug", backend=None, werror=True):
+def cpp_configure(c, build_type="Debug", backend=None, werror=True, tidy=False):
     backend = get_backend(c, backend)
     bdir = build_dir_for(backend, build_type)
     flags = [
         f"-DTOYSSD_ENABLE_WERROR={'ON' if werror else 'OFF'}",
     ]
+    if tidy:
+        flags.append("-DTOYSSD_ENABLE_CLANG_TIDY=ON")
     cmd = f"cmake -S . -B {bdir} -DCMAKE_BUILD_TYPE={build_type} " + " ".join(flags)
     run_cmd(c, cmd, backend)
 
@@ -183,7 +191,15 @@ def cpp_lint(c):
     run_cmd(c, f"ctest --test-dir {bdir} -R cpplint --output-on-failure --no-tests=ignore", backend)
 
 
-# cpp_analyze (clang-tidy) removed for now
+@task
+def cpp_analyze(c, build_type="Debug", backend=None):
+    """Configure with per-target clang-tidy and force rebuild to run analysis."""
+    backend = get_backend(c, backend)
+    # Configure with tidy enabled
+    cpp_configure(c, build_type=build_type, backend=backend, werror=True, tidy=True)
+    bdir = build_dir_for(backend, build_type)
+    # Force rebuild so clang-tidy executes on all targets
+    run_cmd(c, f"cmake --build {bdir} --clean-first -j", backend)
 
 
 @task
@@ -246,3 +262,8 @@ def docker_cpp_build(c, build_type="Debug"):
 @task
 def docker_cpp_test(c, build_type="Debug"):
     cpp_test(c, build_type=build_type, backend="docker")
+
+
+@task
+def docker_cpp_analyze(c, build_type="Debug"):
+    cpp_analyze(c, build_type=build_type, backend="docker")

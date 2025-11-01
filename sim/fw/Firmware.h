@@ -5,6 +5,7 @@
 #include "sim/fw/FTL.h"
 #include "sim/host/HostInterface.h"
 #include "sim/nand/NandInterface.h"
+#include "sim/util/Compat.h"
 #include "systemc"
 
 struct Firmware : sc_core::sc_module {
