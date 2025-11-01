@@ -6,6 +6,8 @@ add_executable(unit_tests
   test_ftl.cpp
 )
 target_compile_features(unit_tests PRIVATE cxx_std_20)
+toyssd_apply_werror(unit_tests)
+toyssd_apply_clang_tidy(unit_tests)
 
 # Allow tests to include headers relative to the source root (e.g., "sim/...")
 target_include_directories(unit_tests PRIVATE ${CMAKE_SOURCE_DIR})

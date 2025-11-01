@@ -4,6 +4,8 @@ add_executable(nand_tests
   ${CMAKE_SOURCE_DIR}/tests/test_main.cpp # Provide sc_main that runs GoogleTest
 )
 target_compile_features(nand_tests PRIVATE cxx_std_20)
+toyssd_apply_werror(nand_tests)
+toyssd_apply_clang_tidy(nand_tests)
 
 # Allow tests to include headers relative to the source root (e.g., "sim/...")
 target_include_directories(nand_tests PRIVATE ${CMAKE_SOURCE_DIR})

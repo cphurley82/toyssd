@@ -309,10 +309,10 @@ This repository already has a solid CMake/CTest foundation, Docker for reproduci
   - [x] Add `tasks.py` (Invoke) using parameterized core tasks with a `backend` flag (`native`/`docker`) and small `docker_*` alias tasks. Ensure aggregator tasks (e.g., `verify`, `check`) honor `c.config.toyssd.backend` or `TOYSSD_BACKEND`.
 
 - CMake integration
-  - [ ] Add toggle `-DTOYSSD_ENABLE_WERROR=ON` (default ON) to treat warnings as errors; allow turning off locally. Apply only to project targets (`simlib`, `ssdsim`, tests, fio engine), not external deps.
-  - [ ] Add optional clang-tidy integration `-DTOYSSD_ENABLE_CLANG_TIDY=ON`; set `CMAKE_CXX_CLANG_TIDY` only on our targets and restrict scope via `.clang-tidy` `HeaderFilterRegex: '^(api|sim|fio_plugin)/'`.
-  - [ ] Keep existing `format` and `format-check` targets. Keep `cpplint` as a CTest (present today) and optionally add a `cpplint` custom target alias for convenience.
-  - [ ] Ensure GoogleTest XML output remains under the selected build dir (e.g., `build-debug/test-results/gtest/`) for CI ingestion.
+  - [x] Add toggle `-DTOYSSD_ENABLE_WERROR=ON` (default ON) to treat warnings as errors; allow turning off locally. Apply only to project targets (`simlib`, `ssdsim`, tests, fio engine), not external deps.
+  - [x] Add optional clang-tidy integration `-DTOYSSD_ENABLE_CLANG_TIDY=ON`; set `CMAKE_CXX_CLANG_TIDY` only on our targets and restrict scope via `.clang-tidy` `HeaderFilterRegex: '^(api|sim|fio_plugin)/'`.
+  - [x] Keep existing `format` and `format-check` targets. Keep `cpplint` as a CTest (present today) and optionally add a `cpplint` custom target alias for convenience.
+  - [x] Ensure GoogleTest XML output remains under the selected build dir (e.g., `build-debug/test-results/gtest/`) for CI ingestion.
 
 - CI (GitHub Actions)
   - [ ] Keep the existing Docker-based Ubuntu workflow (build/test/demo/coverage) unchanged for Linux parity and fio demos.
