@@ -1,7 +1,6 @@
 # toyssd
 
-[![build-and-test](https://github.com/cphurley82/toyssd/actions/workflows/build.yml/badge.svg)](https://github.com/cphurley82/toyssd/actions/workflows/build.yml)
-[![Formatting (clang-format)](https://github.com/cphurley82/toyssd/actions/workflows/format.yml/badge.svg)](https://github.com/cphurley82/toyssd/actions/workflows/format.yml)
+[![ci](https://github.com/cphurley82/toyssd/actions/workflows/ci.yml/badge.svg)](https://github.com/cphurley82/toyssd/actions/workflows/ci.yml)
 [![Agent rules](https://img.shields.io/badge/Agent%20rules-read-blue)](docs/agent_rules.md)
 
 A modular, **SystemC/TLM**-based SSD simulator scaffold that integrates with **fio**, uses **GoogleTest** for TDD, and ships with **Docker** + **GitHub Actions CI**.  
@@ -143,12 +142,15 @@ Docker backend is also available by setting `TOYSSD_BACKEND=docker` or using the
 
 ### CI expectations (summary)
 
-CI validates both Linux (Docker-based) and macOS (native runners) with consistent checks:
+Single workflow `ci.yml` runs on a matrix of macOS and Linux:
 
-- C++: clang-format (format + format-check), cpplint (via CTest), optional clang-tidy
-- Python: Ruff (lint/format) and mypy
-- Tests: GoogleTest via CTest with XML results uploaded from the active build directory
-- Dependency snapshot: each run publishes `uv.lock`, an exported `uv-requirements.txt`, and `tool-versions.txt` as artifacts for traceability
+- Verify: `uv run invoke verify` (configure → static checks → build → unit tests)
+- Demo: `ctest --test-dir build-debug -L demo --output-on-failure`
+- Coverage: `cmake --build build-coverage --target coverage` (HTML report under `build-coverage/coverage/`)
+- Artifacts (standardized names):
+  - `test-results-${{ runner.os }}` → `build-debug/test-results/gtest/**/*.xml`
+  - `coverage-html-${{ runner.os }}` → `build-coverage/coverage/`
+  - `deps-snapshot-${{ github.sha }}-${{ runner.os }}` → `uv.lock`, `uv-requirements.txt`, `tool-versions.txt`
 
 Tooling PATH notes (macOS + VS Code)
 

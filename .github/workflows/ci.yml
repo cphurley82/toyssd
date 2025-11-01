@@ -1,0 +1,154 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  matrix-ci:
+    name: ${{ matrix.os }} / verify + demo + coverage
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-14]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ---------------------- Linux (Docker) setup ----------------------
+      - name: Set up Docker Buildx
+        if: runner.os == 'Linux'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image (toyssd) with cache
+        if: runner.os == 'Linux'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          tags: toyssd
+          push: false
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # ---------------------- macOS setup ----------------------
+      - name: Install system deps (brew)
+        if: runner.os == 'macOS'
+        run: |
+          brew update
+          brew install uv cmake ninja llvm clang-format lcov
+
+      - name: Install Python deps (uv)
+        if: runner.os == 'macOS'
+        run: uv sync --all-extras
+
+      # ---------------------- Verify (build + tests + static checks) ----------------------
+      - name: Verify (invoke verify)
+        if: runner.os == 'Linux'
+        run: |
+          docker run --rm -t -v "$PWD":/src -w /src toyssd \
+            uv run invoke verify
+
+      - name: Verify (invoke verify)
+        if: runner.os == 'macOS'
+        run: uv run invoke verify
+
+      # ---------------------- Demo (CTest -L demo) ----------------------
+      - name: Run CTest demo
+        if: runner.os == 'Linux'
+        run: |
+          docker run --rm -t -v "$PWD":/src -w /src toyssd \
+            ctest --test-dir build-debug -L demo --output-on-failure
+
+      - name: Run CTest demo
+        if: runner.os == 'macOS'
+        run: |
+          ctest --test-dir build-debug -L demo --output-on-failure
+
+      # ---------------------- Coverage (CMake target) ----------------------
+      - name: Build coverage and generate report
+        if: runner.os == 'Linux'
+        run: |
+          docker run --rm -t -v "$PWD":/src -w /src toyssd bash -lc '
+            set -euo pipefail
+            cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug -DENABLE_CODE_COVERAGE=ON && \
+            cmake --build build-coverage -j && \
+            cmake --build build-coverage --target coverage
+          '
+
+      - name: Build coverage and generate report
+        if: runner.os == 'macOS'
+        run: |
+          cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug -DENABLE_CODE_COVERAGE=ON
+          cmake --build build-coverage -j
+          cmake --build build-coverage --target coverage
+
+      # ---------------------- Dependency snapshots ----------------------
+      - name: Capture dependency snapshots (uv lock + versions)
+        if: runner.os == 'Linux'
+        run: |
+          docker run --rm -t -v "$PWD":/src -w /src toyssd bash -lc '
+            set -euo pipefail
+            uv lock
+            uv export --no-hashes > uv-requirements.txt
+            {
+              echo "uv: $(uv --version)";
+              echo "python: $(python --version)";
+              echo "cmake: $(cmake --version | head -n1)";
+              echo "clang-format: $(clang-format --version || true)";
+              echo "clang-tidy: $(clang-tidy --version || true)";
+              echo "fio: $(fio --version || true)";
+            } > tool-versions.txt
+          '
+
+      - name: Capture dependency snapshots (uv lock + versions)
+        if: runner.os == 'macOS'
+        run: |
+          uv lock
+          uv export --no-hashes > uv-requirements.txt
+          {
+            echo "uv: $(uv --version)";
+            echo "python: $(python --version)";
+            echo "cmake: $(cmake --version | head -n1)";
+            echo "clang-format: $(clang-format --version || true)";
+            echo "clang-tidy: $(clang-tidy --version || true)";
+            echo "fio: $(fio --version || true)";
+          } > tool-versions.txt
+
+      # ---------------------- Artifacts (standardized names) ----------------------
+      - name: Upload unit test results (GoogleTest XML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ runner.os }}
+          path: build-debug/test-results/gtest/**/*.xml
+          if-no-files-found: warn
+
+      - name: Upload coverage report (HTML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html-${{ runner.os }}
+          path: build-coverage/coverage/
+          if-no-files-found: warn
+
+      - name: Upload dependency snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deps-snapshot-${{ github.sha }}-${{ runner.os }}
+          path: |
+            uv.lock
+            uv-requirements.txt
+            tool-versions.txt
+          if-no-files-found: warn

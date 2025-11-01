@@ -128,28 +128,10 @@ Task names and descriptions (C++ tasks are CMake/CTest wrappers):
 - py_format – Ruff format.
 - py_lint – Ruff lint.
 - py_typecheck – mypy type checks.
-- check – runs all static checks only (no build/tests): cpp_format_check, cpp_lint, cpp_analyze, py_lint, py_typecheck.
-- verify – full validation: check + cpp_build + cpp_test.
+- check – runs static checks only (no build/tests): cpp_format_check, cpp_lint, py_lint, py_typecheck.
+- verify – full validation: cpp_configure → check → cpp_build → cpp_test.
 
-Example Python tasks (C++ tasks call CMake/CTest under the hood):
-
-```python
-@task
-def py_format(c):
-  c.run("uv run ruff fmt python tests", pty=True)
-
-@task
-def py_lint(c):
-    c.run("uv run ruff check python tests", pty=True)
-
-@task
-def py_typecheck(c):
-  c.run("uv run mypy", pty=True)
-
-@task(pre=[cpp_format_check, cpp_lint, cpp_analyze, cpp_test, py_lint, py_typecheck])
-def verify(c):
-    pass
-```
+Note: `verify` first configures CMake (to generate format/lint CTest targets), then runs checks, then builds and runs unit tests. Static analysis via clang-tidy is available separately through `invoke cpp_analyze` and isn’t part of `check` by default.
 
 ### Backend strategy (native vs docker)
 
@@ -239,72 +221,21 @@ def docker_cpp_test(c, build_type="Debug"):
 
 ## CI Workflow (GitHub Actions)
 
-### GitHub Actions workflows
+### Unified matrix workflow
 
-We will keep the existing Docker-based workflow for Ubuntu (build, unit-tests, demo, coverage) and add a second workflow to validate on macOS using native runners and `uv`.
+The project uses a single workflow at `.github/workflows/ci.yml` with a strategy matrix over `ubuntu-latest` and `macos-14`. Both platforms run the same stages to keep parity:
 
-Example macOS workflow: `.github/workflows/macos-ci.yml`
+- Verify: `uv run invoke verify` (configure → static checks → build → CTest unit tests)
+- Demo: `ctest --test-dir build-debug -L demo --output-on-failure`
+- Coverage: `cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug -DENABLE_CODE_COVERAGE=ON` then `cmake --build build-coverage --target coverage`
 
-```yaml
-name: macos-ci
-on: [push, pull_request]
+Standardized artifacts for each OS:
 
-jobs:
-  build-test-macos:
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-      - name: Install system deps
-        run: |
-          brew update
-          brew install uv cmake ninja llvm clang-format clang-tidy
-      - name: Install Python deps
-        run: uv sync --all-extras
-      - name: Build + Test (native)
-        run: uv run invoke verify
-      - name: C++ Lint/Format/Analyze
-        run: |
-          uv run invoke cpp-format-check
-          uv run invoke cpp-lint
-          uv run invoke cpp-analyze
-      - name: Python Lint/Format/Types
-        run: |
-          uv run invoke py-format
-          uv run invoke py-lint
-          uv run invoke py-typecheck
-      - name: Capture tool/version snapshots
-        run: |
-          # Create a lock snapshot without committing it
-          uv lock
-          # Export an equivalent requirements file for quick diffing
-          uv export --no-hashes > uv-requirements.txt
-          # Record tool versions used during this run
-          {
-            echo "uv: $(uv --version)";
-            echo "python: $(python --version)";
-            echo "cmake: $(cmake --version | head -n1)";
-            echo "clang-format: $(clang-format --version || true)";
-            echo "clang-tidy: $(clang-tidy --version || true)";
-            echo "fio: $(fio --version || true)";
-          } > tool-versions.txt
-      - name: Upload dependency snapshots
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: deps-snapshot-${{ github.sha }}
-          path: |
-            uv.lock
-            uv-requirements.txt
-            tool-versions.txt
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-macos
-          path: build-debug/test-results/gtest/**/*.xml
+- `test-results-${{ runner.os }}` → `build-debug/test-results/gtest/**/*.xml`
+- `coverage-html-${{ runner.os }}` → `build-coverage/coverage/`
+- `deps-snapshot-${{ github.sha }}-${{ runner.os }}` → `uv.lock`, `uv-requirements.txt`, `tool-versions.txt`
 
-Note: The existing Docker-based workflow files remain (e.g., `build.yml` with build/test/demo/coverage jobs). Over time, we may consolidate, but the immediate plan is to keep Docker-based CI for Linux parity and fio demos while adding macOS native coverage.
-```
+Linux runs inside the `toyssd` Docker image for reproducibility; macOS uses native runners via Homebrew-installed tooling.
 
 ## Developer Workflow
 
@@ -396,8 +327,8 @@ Tip: You can change the default backend by setting `TOYSSD_BACKEND` or via `c.co
   - Fully migrate to `uv` + `pyproject.toml`; remove `requirements.txt` and any global `pip` installs from Docker.
 
 - CI strategy
-  - Keep the existing Docker-based Ubuntu workflow for reproducibility and fio demos.
-  - Add a new macOS workflow using native runners and `uv` for parity across OSes.
+  - Use a single matrix workflow (`ci.yml`) for Ubuntu (Docker-based) and macOS (native).
+  - Standardize artifacts and steps (verify, demo, coverage) across both OSes.
 
 - clang-tidy scope
   - Only run clang-tidy on our sources (api/, sim/, fio_plugin/). Exclude external deps (`_deps/`) and tests. Restrict via `.clang-tidy` HeaderFilterRegex and apply `CMAKE_CXX_CLANG_TIDY` only to our targets.
