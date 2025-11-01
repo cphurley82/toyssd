@@ -84,13 +84,16 @@ struct NandCmd {
 };
 
 struct NandModel : sc_core::sc_module {
+  // TLM-2.0 target socket for standard transactions
   tlm_utils::simple_target_socket<NandModel> socket;
 
   SC_CTOR(NandModel) {
     socket.register_b_transport(this, &NandModel::b_transport);
   }
 
+  // Standard TLM b_transport (required by simple_target_socket)
   void b_transport(tlm::tlm_generic_payload& gp, sc_core::sc_time& delay);
+
   // Overload for custom payload shortcut (not standard TLM; placeholder)
   void b_transport(NandCmd& cmd, sc_core::sc_time& delay);
 

@@ -19,7 +19,7 @@ std::string make_key(const NandCmd::Address& a) {
 
 void NandModel::b_transport(tlm::tlm_generic_payload& /*gp*/,
                             sc_core::sc_time& /*delay*/) {
-  // Not implemented: use custom NandCmd path for this simple model
+  // Not implemented: this simplified model uses the custom NandCmd path.
 }
 
 void NandModel::b_transport(NandCmd& cmd, sc_core::sc_time& /*delay*/) {
@@ -47,9 +47,12 @@ void NandModel::b_transport(NandCmd& cmd, sc_core::sc_time& /*delay*/) {
           auto dst = cmd.data.value();
           const size_t n = std::min(dst.size(), store.data.size());
           if (n > 0) std::memcpy(dst.data(), store.data.data(), n);
-          // If destination is larger than source, zero the remainder for
-          // determinism
-          if (dst.size() > n) std::memset(dst.data() + n, 0, dst.size() - n);
+          // Zero-fill any remaining bytes in the destination buffer to make
+          // behavior deterministic for callers that provide larger buffers
+          // than what was stored (or when no data was stored).
+          if (dst.size() > n) {
+            std::memset(dst.data() + n, 0, dst.size() - n);
+          }
         }
         if (!cmd.metadata.empty()) {
           const size_t n = std::min(cmd.metadata.size(), store.metadata.size());

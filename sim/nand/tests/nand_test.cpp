@@ -1,6 +1,4 @@
 // Copyright Chris Hurley
-#include <gtest/gtest.h>
-
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -9,7 +7,10 @@
 #include <span>
 #include <vector>
 
+#include "gtest/gtest.h"  // Other library headers
+#include "sim/nand/NandCmd.h"
 #include "sim/nand/NandModel.h"
+#include "systemc"
 
 namespace {
 
@@ -55,6 +56,102 @@ class NandModelTest : public ::testing::Test {
  protected:
   NandModel nand{"nand"};
 };
+
+TEST_F(NandModelTest, WriteAndReadDataRoundtrip) {
+  // Choose an address distinct from other tests
+  auto addr =
+      NandCmd::Address{}.with_block(5).with_wordline(3).with_logical_page(0);
+
+  // Prepare data and metadata with deterministic patterns
+  std::vector<uint8_t> data_in(256);
+  for (size_t i = 0; i < data_in.size(); ++i)
+    data_in[i] = static_cast<uint8_t>(i & 0xFF);
+  std::array<uint8_t, 12> meta_in{};
+  fill_pattern(std::span<uint8_t>(meta_in), /*val=*/0x42);
+
+  // Program both data and metadata
+  auto prog = MakeProgram(addr, std::span<uint8_t>(data_in),
+                          std::span<uint8_t>(meta_in));
+  auto delay0 = sc_core::SC_ZERO_TIME;
+  nand.b_transport(prog, delay0);
+
+  // Read them back and verify exact match
+  std::vector<uint8_t> data_out(data_in.size(), 0);
+  std::array<uint8_t, 12> meta_out{};
+  auto rd = MakeRead(addr, std::span<uint8_t>(data_out),
+                     std::span<uint8_t>(meta_out));
+  auto delay1 = sc_core::SC_ZERO_TIME;
+  nand.b_transport(rd, delay1);
+
+  EXPECT_EQ(data_in, data_out);
+  EXPECT_EQ(meta_in, meta_out);
+
+  // Also verify that reading into a larger buffer zero-fills the tail
+  std::vector<uint8_t> data_big(data_in.size() + 16, 0xAA);
+  auto rd2 = MakeRead(addr, std::span<uint8_t>(data_big), std::span<uint8_t>());
+  auto delay2 = sc_core::SC_ZERO_TIME;
+  nand.b_transport(rd2, delay2);
+  ASSERT_GE(data_big.size(), data_in.size());
+  for (size_t i = 0; i < data_in.size(); ++i)
+    EXPECT_EQ(data_big[i], data_in[i]);
+  for (size_t i = data_in.size(); i < data_big.size(); ++i)
+    EXPECT_EQ(data_big[i], 0u);
+}
+
+TEST_F(NandModelTest, UnprogrammedPageReturnsAllFF) {
+  // Address that has never been programmed
+  auto addr =
+      NandCmd::Address{}.with_block(100).with_wordline(2).with_logical_page(0);
+
+  std::array<uint8_t, 64> data_out{};
+  data_out.fill(0x00);
+  std::array<uint8_t, 8> meta_out{};
+  meta_out.fill(0x00);
+
+  auto rd = MakeRead(addr, std::span<uint8_t>(data_out),
+                     std::span<uint8_t>(meta_out));
+  auto delay = sc_core::SC_ZERO_TIME;
+  nand.b_transport(rd, delay);
+
+  for (auto b : data_out) EXPECT_EQ(0xFF, b);
+  for (auto b : meta_out) EXPECT_EQ(0xFF, b);
+}
+
+TEST_F(NandModelTest, ErasedPageReturnsAllFF) {
+  // Program a page, then erase its block, then read it back
+  auto addr =
+      NandCmd::Address{}.with_block(200).with_wordline(1).with_logical_page(1);
+
+  // Initial program so the page exists with data/metadata
+  std::array<uint8_t, 32> data_in{};
+  fill_pattern(std::span<uint8_t>(data_in), /*val=*/0x11);
+  std::array<uint8_t, 6> meta_in{};
+  fill_pattern(std::span<uint8_t>(meta_in), /*val=*/0x22);
+  auto p = MakeProgram(addr, std::span<uint8_t>(data_in),
+                       std::span<uint8_t>(meta_in));
+  auto delay0 = sc_core::SC_ZERO_TIME;
+  nand.b_transport(p, delay0);
+
+  // Erase the entire block
+  NandCmd er{};
+  er.op = NandCmd::Op::ERASE;
+  er.addr = addr;  // wordline/logical_page ignored for erase scope
+  auto delay1 = sc_core::SC_ZERO_TIME;
+  nand.b_transport(er, delay1);
+
+  // Read back — should now return erased state (0xFF)
+  std::array<uint8_t, 32> data_out{};
+  data_out.fill(0x00);
+  std::array<uint8_t, 6> meta_out{};
+  meta_out.fill(0x00);
+  auto rd = MakeRead(addr, std::span<uint8_t>(data_out),
+                     std::span<uint8_t>(meta_out));
+  auto delay2 = sc_core::SC_ZERO_TIME;
+  nand.b_transport(rd, delay2);
+
+  for (auto b : data_out) EXPECT_EQ(0xFF, b);
+  for (auto b : meta_out) EXPECT_EQ(0xFF, b);
+}
 
 TEST_F(NandModelTest, SaveAndRecallMetadataAcrossAddresses) {
   // Iterate a modest grid to keep runtime small
