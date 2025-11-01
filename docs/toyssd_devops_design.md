@@ -15,6 +15,7 @@ This document outlines a consistent DevOps workflow for the toyssd project acros
 - [CMake Integration Highlights](#cmake-integration-highlights)
 - [CI Workflow (GitHub Actions)](#ci-workflow-github-actions)
 - [Developer Workflow](#developer-workflow)
+- [Dockerfile](#dockerfile)
 - [TODO (Migration Plan)](#todo-migration-plan)
 - [Decisions and Rationale](#decisions-and-rationale)
 - [Summary](#summary)
@@ -27,6 +28,8 @@ This document outlines a consistent DevOps workflow for the toyssd project acros
 - macOS CI runs for free where possible.
 - SystemC is built from source via CMake.
 - Python and C++ both conform to consistent lint/format rules.
+- Docker image pre-bakes a uv-managed Python environment for tooling so containers don’t re-install on each run; dependency changes are handled by rebuilding the image.
+- We do not commit a `uv.lock` to the repo by default to allow newer tool versions automatically; CI publishes a snapshot artifact (lock + versions manifest) each run for traceability.
 
 ## Toolchain Overview
 
@@ -155,6 +158,8 @@ Adopt a single-source-of-truth task set that’s parameterized by a backend flag
 - Core parameterized tasks: accept `backend` and `build_type` and derive the build directory.
 - Aliases: `docker_cpp_*` call core tasks with `backend="docker"`.
 - Aggregators: read default backend from `c.config.toyssd.backend` or `TOYSSD_BACKEND` env variable.
+  
+  For the Docker backend, Python tooling is executed via `uv run` against a pre-baked virtual environment inside the image (see Dockerfile). We set `UV_PROJECT_ENVIRONMENT=/opt/toyssd/.venv` so `uv run` uses that environment without attempting to install on the bind-mounted source tree. If dependencies change, rebuild the image rather than syncing at runtime.
 
 Sketch:
 
@@ -267,6 +272,30 @@ jobs:
           uv run invoke py-format
           uv run invoke py-lint
           uv run invoke py-typecheck
+      - name: Capture tool/version snapshots
+        run: |
+          # Create a lock snapshot without committing it
+          uv lock
+          # Export an equivalent requirements file for quick diffing
+          uv export --no-hashes > uv-requirements.txt
+          # Record tool versions used during this run
+          {
+            echo "uv: $(uv --version)";
+            echo "python: $(python --version)";
+            echo "cmake: $(cmake --version | head -n1)";
+            echo "clang-format: $(clang-format --version || true)";
+            echo "clang-tidy: $(clang-tidy --version || true)";
+            echo "fio: $(fio --version || true)";
+          } > tool-versions.txt
+      - name: Upload dependency snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deps-snapshot-${{ github.sha }}
+          path: |
+            uv.lock
+            uv-requirements.txt
+            tool-versions.txt
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -297,6 +326,24 @@ uv run invoke cpp-build
 uv run invoke cpp-test
 ```
 
+## Dockerfile
+
+We use a slim Ubuntu 24.04 base image that installs only minimal system dependencies with APT, installs `uv`, and then pre-installs the project’s Python tooling into an image-local virtual environment.
+
+Key points:
+
+- APT installs compiler toolchain and system libraries only (cmake, build-essential, clang-tools, libaio, zlib, numa, fio, etc.).
+- `uv` is installed globally and used to create a persistent virtual environment at `/opt/toyssd/.venv` via `uv sync` during image build.
+- Only dependency metadata (`pyproject.toml`, and optionally `uv.lock`) is copied into the image at build time. No project source code is copied. At runtime, the repository is bind-mounted at `/src`.
+- `UV_PROJECT_ENVIRONMENT=/opt/toyssd/.venv` is set so `uv run` from within the container uses the pre-baked environment rather than creating or modifying environments on the bind mount.
+- If you prefer strict pinning, add a `uv.lock`, copy it in the Dockerfile, and use `uv sync --frozen` for reproducible, cacheable builds. When the lock or `pyproject.toml` changes, rebuild the image to update dependencies. Default policy here is to omit `uv.lock` and allow latest-compatible resolution at build time; CI publishes a snapshot for traceability.
+- Runtime containers should not attempt to install/update Python packages; if they would, rely on the existing `UV_PROJECT_ENVIRONMENT` and optionally set `UV_NO_SYNC=1` to avoid accidental network or writes.
+
+Developer ergonomics:
+
+- Run CMake/CTest commands directly in the container with your host UID/GID to avoid root-owned files.
+- Run Python tooling through `uv run` inside the container; it will use the pre-baked environment without touching the bind-mounted worktree.
+
 ## TODO (Migration Plan)
 
 This repository already has a solid CMake/CTest foundation, Docker for reproducible builds, and CI that builds/tests in Docker and runs clang-format checks. To fully align with the new design, implement the following high-level steps:
@@ -321,9 +368,13 @@ This repository already has a solid CMake/CTest foundation, Docker for reproduci
   - [x] Add a coverage job using `-DENABLE_CODE_COVERAGE=ON` + `coverage` target; keep threshold low (e.g., 20%). Install `gcovr` via `uv` dev extras.
 
 - Dockerfile
-  - [ ] Slim Dockerfile to install toolchain only, install `uv`, and rely on `uv run` in bind-mounted workspace for Python tooling (avoid global `pip`).
-  - [ ] Remove `requirements.txt` usage and associated `pip install` steps.
-  - [ ] Document container usage with `uv run` equivalents in the README.
+  - [x] Install only minimal toolchain/system dependencies with APT; install `uv` globally.
+  - [x] Pre-install Python dev/tooling dependencies into an image-local venv at `/opt/toyssd/.venv` using `uv sync` (no source code copied into image).
+  - [x] Set `UV_PROJECT_ENVIRONMENT=/opt/toyssd/.venv` (and `VIRTUAL_ENV`/`PATH`) so `uv run` inside the container reuses the pre-baked env and does not write to the bind mount.
+  - [x] Remove `requirements.txt` usage and switch Docker/CI to `uv` for Python tooling installation.
+  - [x] Update `README.md` with container usage examples for `uv run invoke ...`, note that dependency changes require rebuilding the image, and document CI dependency snapshot artifacts (uv.lock + versions manifest).
+  - [x] Document capturing `uv.lock`, exported requirements, and `tool-versions.txt` in CI and uploading as an artifact.
+  - [x] Implement analogous steps in Linux/Docker-based workflow (run snapshot inside the container and upload).
 
 - VS Code tasks and docs
   - [ ] Keep existing CMake tasks for quick local workflows (`build/` only).

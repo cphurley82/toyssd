@@ -31,6 +31,33 @@ jobs:
             cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
           docker run --rm -t -v "$PWD":/src -w /src toyssd \
             cmake --build build -j
+
+      - name: Capture dependency snapshots (uv lock + versions) in Docker
+        run: |
+          docker run --rm -t -v "$PWD":/src -w /src toyssd bash -lc '
+            set -euo pipefail
+            uv lock
+            uv export --no-hashes > uv-requirements.txt
+            {
+              echo "uv: $(uv --version)";
+              echo "python: $(python --version)";
+              echo "cmake: $(cmake --version | head -n1)";
+              echo "clang-format: $(clang-format --version || true)";
+              echo "clang-tidy: $(clang-tidy --version || true)";
+              echo "fio: $(fio --version || true)";
+            } > tool-versions.txt
+          '
+
+      - name: Upload dependency snapshots (Docker)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deps-snapshot-${{ github.sha }}-linux
+          path: |
+            uv.lock
+            uv-requirements.txt
+            tool-versions.txt
+          if-no-files-found: warn
       - name: Archive build directory (tar.gz)
         run: |
           tar -czf build.tar.gz build

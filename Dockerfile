@@ -59,8 +59,9 @@ COPY pyproject.toml ./
 
 # Create a dedicated, immutable virtual environment for Python tooling within
 # the image using the project's pyproject.toml (avoids /src/.venv conflicts).
-# Note: If you add a uv.lock later, copy it here and add `--frozen` for
-# reproducible installs.
+# Policy: we do not commit a uv.lock by default; CI publishes a lock snapshot
+# artifact (plus versions manifest) for traceability. If you later decide to
+# pin in-source, copy `uv.lock` here and add `--frozen` for reproducible installs.
 ENV UV_PROJECT_ENVIRONMENT=/opt/toyssd/.venv
 RUN uv sync --extra dev --no-install-project
 

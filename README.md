@@ -36,7 +36,32 @@ Notes:
 - The image includes build tools and system fio; it doesn’t build during `docker build`. Build happens when you run commands in the container with your repo mounted.
 - The `-v "$PWD":/src -w /src` bind-mount makes your repository available to the container at `/src`.
 - The image preinstalls the `uv` CLI and a dedicated Python virtualenv with dev tooling at `/opt/toyssd/.venv` (on PATH by default). Inside the container, you can run tools directly, e.g. `invoke check` or `invoke verify`. If you prefer `uv`, it will reuse `/opt/toyssd/.venv` instead of creating `/src/.venv`.
-  - Python dependencies in the image are installed via `pyproject.toml` at build time using `uv sync --extra dev`. If you change `pyproject.toml`, rebuild the image to update the baked environment.
+  - Python dependencies in the image are installed via `pyproject.toml` at build time using `uv sync --extra dev`. If you change Python tooling dependencies, rebuild the image to update the baked environment.
+  - By default, we do not commit `uv.lock`; CI publishes a per-run dependency snapshot artifact (`uv.lock`, `uv-requirements.txt`, and `tool-versions.txt`) so you can inspect or reproduce the exact tool versions used in a run.
+
+### Python tooling inside the container
+
+The container already has a ready-to-use venv at `/opt/toyssd/.venv` and sets `UV_PROJECT_ENVIRONMENT` so `uv run` reuses that environment.
+
+Examples:
+
+```bash
+# Run all checks + C++ build + tests (uses pre-baked Python env)
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd \
+  uv run invoke verify
+
+# Static checks only
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd \
+  uv run invoke check
+
+# Lint/format Python
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd \
+  uv run invoke py_lint
+docker run --rm -t --user "$(id -u)":"$(id -g)" -e HOME=/src -v "$PWD":/src -w /src toyssd \
+  uv run invoke py_format
+```
+
+Note: Because the Python tooling is pre-baked into the image, these commands do not install or write packages into your bind-mounted repo. If you add or upgrade Python tooling in `pyproject.toml`, rebuild the image.
 
 ---
 
@@ -313,6 +338,7 @@ uv sync --all-extras
 Docker environment:
 
 - No setup required. The container image includes a ready-to-use virtualenv at `/opt/toyssd/.venv` with all Python dev tooling installed. Use `invoke …` directly.
+  - Default policy: we do not commit `uv.lock`. CI publishes snapshot artifacts (`uv.lock`, an exported `uv-requirements.txt`, and a `tool-versions.txt` manifest) per run for traceability.
 
 ### Common tasks
 
