@@ -241,11 +241,16 @@ def check(c):
 
 @task
 def verify(c, build_type: str = "Debug", backend: str | None = None):
-    """Full validation: static checks + C++ configure/build/test."""
-    # Static checks (CTests + Ruff/mypy). These are backend-agnostic.
-    check(c)
-    # C++ configure/build/test using selected backend
+    """Full validation: configure first, then static checks, then build + tests.
+
+    Rationale: C++ formatting and cpplint checks rely on CMake targets/tests
+    created at configure time. On fresh CI runners, configure must run first.
+    """
+    # Ensure CMake targets and tests exist before running checks
     cpp_configure(c, build_type=build_type, backend=backend)
+    # Static checks (CTests + Ruff/mypy)
+    check(c)
+    # Build and test
     cpp_build(c, build_type=build_type, backend=backend)
     cpp_test(c, build_type=build_type, backend=backend)
 

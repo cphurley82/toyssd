@@ -18,6 +18,10 @@ jobs:
       - name: Install Python deps (uv)
         run: uv sync --all-extras
 
+      - name: Ensure clang-format is installed
+        run: |
+          brew list --versions clang-format || brew install clang-format
+
       - name: Full verify (checks + build + tests)
         run: uv run invoke verify
 
