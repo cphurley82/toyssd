@@ -27,15 +27,15 @@ jobs:
 
       - name: C++ Lint/Format/Analyze
         run: |
-          uv run invoke cpp_format_check
-          uv run invoke cpp_lint
-          uv run invoke cpp_analyze
+          uv run invoke cpp-format-check
+          uv run invoke cpp-lint
+          uv run invoke cpp-analyze
 
       - name: Python Lint/Format/Types
         run: |
-          uv run invoke py_format
-          uv run invoke py_lint
-          uv run invoke py_typecheck
+          uv run invoke py-format
+          uv run invoke py-lint
+          uv run invoke py-typecheck
 
       - name: Upload test results (GoogleTest XML)
         if: always()

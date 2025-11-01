@@ -259,14 +259,14 @@ jobs:
         run: uv run invoke verify
       - name: C++ Lint/Format/Analyze
         run: |
-          uv run invoke cpp_format_check
-          uv run invoke cpp_lint
-          uv run invoke cpp_analyze
+          uv run invoke cpp-format-check
+          uv run invoke cpp-lint
+          uv run invoke cpp-analyze
       - name: Python Lint/Format/Types
         run: |
-          uv run invoke py_format
-          uv run invoke py_lint
-          uv run invoke py_typecheck
+          uv run invoke py-format
+          uv run invoke py-lint
+          uv run invoke py-typecheck
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -293,8 +293,8 @@ uv run invoke py_format
 uv run invoke py_lint
 
 # Build + Test C++
-uv run invoke cpp_build
-uv run invoke cpp_test
+uv run invoke cpp-build
+uv run invoke cpp-test
 ```
 
 ## TODO (Migration Plan)
