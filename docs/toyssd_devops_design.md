@@ -315,10 +315,10 @@ This repository already has a solid CMake/CTest foundation, Docker for reproduci
   - [x] Ensure GoogleTest XML output remains under the selected build dir (e.g., `build-debug/test-results/gtest/`) for CI ingestion.
 
 - CI (GitHub Actions)
-  - [ ] Keep the existing Docker-based Ubuntu workflow (build/test/demo/coverage) unchanged for Linux parity and fio demos.
-  - [ ] Add a new macOS workflow (`macos-ci.yml`) that installs toolchain + `uv`, runs `uv run invoke verify`, then runs lint/type checks via Invoke.
-  - [ ] Upload GTest XML results from `build-debug/test-results/gtest/**/*.xml`.
-  - [ ] Add an optional coverage job using `-DENABLE_CODE_COVERAGE=ON` + `coverage` target; keep threshold low (e.g., 20%). Install `gcovr` via `uv` dev extras.
+  - [x] Keep the existing Docker-based Ubuntu workflow (build/test/demo/coverage) unchanged for Linux parity and fio demos.
+  - [x] Add a new macOS workflow (`macos-ci.yml`) that installs toolchain + `uv`, runs `uv run invoke verify`, then runs lint/type checks via Invoke.
+  - [x] Upload GTest XML results from `build-debug/test-results/gtest/**/*.xml`.
+  - [x] Add a coverage job using `-DENABLE_CODE_COVERAGE=ON` + `coverage` target; keep threshold low (e.g., 20%). Install `gcovr` via `uv` dev extras.
 
 - Dockerfile
   - [ ] Slim Dockerfile to install toolchain only, install `uv`, and rely on `uv run` in bind-mounted workspace for Python tooling (avoid global `pip`).

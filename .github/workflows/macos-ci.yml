@@ -1,0 +1,42 @@
+name: macos-ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-test-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system deps (brew)
+        run: |
+          brew update
+          brew install uv cmake ninja llvm clang-format clang-tidy
+
+      - name: Install Python deps (uv)
+        run: uv sync --all-extras
+
+      - name: Full verify (checks + build + tests)
+        run: uv run invoke verify
+
+      - name: C++ Lint/Format/Analyze
+        run: |
+          uv run invoke cpp_format_check
+          uv run invoke cpp_lint
+          uv run invoke cpp_analyze
+
+      - name: Python Lint/Format/Types
+        run: |
+          uv run invoke py_format
+          uv run invoke py_lint
+          uv run invoke py_typecheck
+
+      - name: Upload test results (GoogleTest XML)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-macos
+          path: build-debug/test-results/gtest/**/*.xml
+          if-no-files-found: warn
