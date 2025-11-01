@@ -2,11 +2,16 @@
 
 [![build-and-test](https://github.com/cphurley82/toyssd/actions/workflows/build.yml/badge.svg)](https://github.com/cphurley82/toyssd/actions/workflows/build.yml)
 [![Formatting (clang-format)](https://github.com/cphurley82/toyssd/actions/workflows/format.yml/badge.svg)](https://github.com/cphurley82/toyssd/actions/workflows/format.yml)
+[![Agent rules](https://img.shields.io/badge/Agent%20rules-read-blue)](docs/agent_rules.md)
 
 A modular, **SystemC/TLM**-based SSD simulator scaffold that integrates with **fio**, uses **GoogleTest** for TDD, and ships with **Docker** + **GitHub Actions CI**.  
 Authored by **Chris Hurley**. Licensed under **MIT**.
 
 Note on C++ standard: The project defaults to C++20 (no GNU extensions). You can opt into a newer standard by configuring with `-DCMAKE_CXX_STANDARD=23` (or higher, if supported by your toolchain).
+
+## Contributing
+
+Before opening a PR or using an AI agent, please read the short guidelines in [docs/agent_rules.md](docs/agent_rules.md).
 
 ## Quick Start (the easy way)
 
@@ -182,6 +187,13 @@ Optional plotting/analysis commands require the `viz` extras (pandas/matplotlib)
 ```bash
 uv sync --extra viz
 ```
+
+## Agent workflow (local rules)
+
+- Run the full verification step after each substantive change: `uv run invoke verify`.
+- In VS Code, use the workspace tasks: “Verify” (default Test task) or “Build + Verify (Debug)”.
+
+See also: `docs/agent_rules.md` for the detailed expectations followed by agents and contributors.
 
 ## Manual fio run (advanced)
 
