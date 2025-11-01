@@ -1,0 +1,63 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "toyssd"
+version = "0.1.0"
+description = "Toy SSD simulator (C++/SystemC) with Python tooling and CLI"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Chris Hurley" }]
+
+# Entry points for a simple CLI
+[project.scripts]
+toyssd = "toyssd.cli:main"
+
+[project.optional-dependencies]
+dev = [
+  "invoke>=2.2",
+  "build>=1.2",
+  "pytest>=8.0",
+  "rich>=13.0",
+  "cpplint>=1.6.1",
+  "ruff>=0.6.0",
+  "mypy>=1.10",
+  "gcovr>=7.0",
+]
+# Optional helpers for plotting/analysis commands in the CLI
+viz = [
+  "pandas>=2.0",
+  "matplotlib>=3.8",
+]
+
+[tool.ruff]
+src = ["python", "tests"]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E","F","W","I","B","UP","SIM","FBT","A","C4","DTZ"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.10"
+packages = ["toyssd"]
+strict = false
+ignore_missing_imports = true
+warn_unused_ignores = true
+
+# Ensure packaging discovers the package under the non-standard 'python/' layout
+[tool.hatch.build.targets.wheel]
+packages = ["python/toyssd"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+  "python/toyssd/**",
+  "README.md",
+  "LICENSE",
+]

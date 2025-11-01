@@ -35,6 +35,8 @@ Notes:
 
 - The image includes build tools and system fio; it doesn’t build during `docker build`. Build happens when you run commands in the container with your repo mounted.
 - The `-v "$PWD":/src -w /src` bind-mount makes your repository available to the container at `/src`.
+- The image preinstalls the `uv` CLI and a dedicated Python virtualenv with dev tooling at `/opt/toyssd/.venv` (on PATH by default). Inside the container, you can run tools directly, e.g. `invoke check` or `invoke verify`. If you prefer `uv`, it will reuse `/opt/toyssd/.venv` instead of creating `/src/.venv`.
+  - Python dependencies in the image are installed via `pyproject.toml` at build time using `uv sync --extra dev`. If you change `pyproject.toml`, rebuild the image to update the baked environment.
 
 ---
 
@@ -67,12 +69,34 @@ brew install python
 
 # Verify clang-format is on PATH and recognized by CMake
 clang-format --version
+
+```
+
+Enable clang-tidy on macOS (Homebrew):
+
+```bash
+# Install LLVM (includes clang-tidy)
+brew install llvm
+
+# Add LLVM's bin dir to your PATH (persist for zsh)
+echo 'export PATH="$(brew --prefix llvm)/bin:$PATH"' >> ~/.zshrc
+exec zsh
+
+# Verify clang-tidy is visible
+clang-tidy --version
 ```
 
 Notes:
 
 - If `clang-format` is installed, the build will auto-format sources before compiling. If it isn’t, formatting is skipped with a message and the build proceeds.
 - You can switch to Ninja by configuring with `-G Ninja`; otherwise, Unix Makefiles are fine on macOS.
+
+Tip: You can also point CMake directly to clang-tidy at configure time if you prefer not to edit PATH:
+
+```bash
+cmake -S . -B build-debug -DCMAKE_BUILD_TYPE=Debug \
+  -DCLANG_TIDY_EXE="$(brew --prefix llvm)/bin/clang-tidy"
+```
 
 ### Build and Test
 
@@ -267,39 +291,88 @@ License: MIT (see `LICENSE`).
   - Linux: ensure `LD_LIBRARY_PATH` includes your `build` and `build/_deps/systemc-build/src`, and `SSD_SIM_LIB_PATH` points to `libssdsim.so`; also set `LD_PRELOAD` to `libscmain_stub.so` as shown above.
 - Why is the fio ioengine `.so` even on macOS? The fio external ioengine convention uses `.so`, and this project follows that for compatibility.
 - `clang-format` missing: CMake's `format`/`format-check` targets will no-op with a hint; builds still proceed.
+- `clang-tidy` not found:
+  - macOS: `brew install llvm` then add `$(brew --prefix llvm)/bin` to your PATH (see steps above), or pass `-DCLANG_TIDY_EXE=$(brew --prefix llvm)/bin/clang-tidy` at configure time.
+  - Ubuntu/Debian: `sudo apt install clang-tidy`.
+  - After updating PATH, re-open your shell (or `exec zsh`) and reconfigure your build directory.
 - Prefer bundled vs system fio: For reproducible CI-like runs, rely on the CTest demo (bundled fio). For manual experimentation, install fio or provide a path via `-DFIO_EXE_OVERRIDE=/path/to/fio` at configure time.
 
-## Python venv + cpplint (C++ style checks)
+## Python tooling (uv + Invoke)
 
-This repo includes a `cpplint` CTest to check basic Google-style C++ conventions. It's optional and only added when testing is enabled and `cpplint` is installed.
+This repo uses [uv](https://github.com/astral-sh/uv) for fast Python env management and [Invoke](https://www.pyinvoke.org/) for tasks. Dev dependencies include cpplint, ruff, mypy, pytest, and gcovr.
 
-### Create a virtual environment (macOS/Linux)
+### One-time setup
 
-```bash
-# From repo root (macOS zsh / Linux bash)
-python3 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-Notes:
-
-- Deactivate later with `deactivate`.
-- If your system Python is managed by pyenv/Homebrew, ensure `python3` points to your intended interpreter.
-
-### Configure, build, and run cpplint via CTest
+Native host environment:
 
 ```bash
-# Configure (Debug) and build
-cmake -S . -B build-debug -DCMAKE_BUILD_TYPE=Debug
-cmake --build build-debug -j
-
-# Run only the cpplint test
-ctest --test-dir build-debug -R cpplint
+# Install dev extras into .venv/ (on your host)
+uv sync --all-extras
 ```
 
-If `cpplint` or `Python3` isn't found, the cpplint CTest is skipped and a hint is printed during CMake configure. The test uses cpplint defaults.
+Docker environment:
+
+- No setup required. The container image includes a ready-to-use virtualenv at `/opt/toyssd/.venv` with all Python dev tooling installed. Use `invoke …` directly.
+
+### Common tasks
+
+```bash
+# Full validation: static checks + C++ build + CTest
+uv run invoke verify
+
+# Static checks only (no build/tests)
+uv run invoke check
+
+# Format and lint Python
+uv run invoke py_format
+uv run invoke py_lint
+uv run invoke py_typecheck
+
+# C++ configure/build/test (native)
+uv run invoke cpp_configure
+uv run invoke cpp_build
+uv run invoke cpp_test
+```
+
+Docker backend is also available by setting `TOYSSD_BACKEND=docker` or using the `docker_` aliases (e.g., `invoke docker_cpp_build`) from inside the container, or `uv run invoke docker_cpp_build` from your host.
+
+Tooling PATH notes (macOS + VS Code)
+
+- clang-tidy is part of Homebrew’s llvm keg at `$(brew --prefix llvm)/bin`. Ensure that directory is on PATH before running `env-check`, CMake, or CTest.
+- If you use VS Code CMake Tools, it does not automatically inherit your login shell PATH. You can add PATH (and Python venv variables) to `cmake.configureEnvironment` in `.vscode/settings.json`:
+
+```json
+{
+  "cmake.configureEnvironment": {
+    "PATH": "${env:PATH}:$(/opt/homebrew/bin/brew --prefix llvm)/bin",
+    "VIRTUAL_ENV": "${workspaceFolder}/.venv",
+    "Python3_EXECUTABLE": "${workspaceFolder}/.venv/bin/python"
+  }
+}
+```
+
+- Alternatively, pass `-DCLANG_TIDY_EXE=$(brew --prefix llvm)/bin/clang-tidy` when configuring to bypass PATH.
+
+### CLI helper
+
+A small CLI is provided under the `toyssd` package (installed in editable mode for development). Install the project and use the CLI:
+
+```bash
+# Install the local package in editable mode
+uv pip install -e .
+
+# Generate a config
+uv run toyssd gen-config --out config/generated.json
+
+# Run the bundled fio demo via CTest (requires a configured build dir)
+uv run toyssd run-fio-demo --build-dir build-debug
+```
+
+Optional plotting/analysis commands require the `viz` extras (pandas/matplotlib). Install with:
+
+```bash
+uv sync --extra viz
+```
 
 ## Code coverage (local + CI)
 
@@ -308,9 +381,8 @@ This repo provides an opt-in coverage build that works locally and in CI using g
 ### Install tools
 
 - Python + gcovr
-  - pip: `python3 -m pip install --user gcovr` (or `pipx install gcovr`)
+  - Recommended: `uv sync --all-extras` (installs gcovr in `.venv/`)
   - or Homebrew: `brew install gcovr`
-  - Alternatively, `pip install -r requirements.txt` (includes gcovr)
 - macOS (AppleClang): install LLVM tools for best results: `brew install llvm`
   - gcovr will auto-detect `llvm-cov` when present.
 

@@ -26,6 +26,10 @@ option(TOYSSD_BUILD_FIO_ENGINE "Build bundled fio external ioengine" ON)
 option(TOYSSD_BUILD_DEMOS "Add demo custom targets that run fio with the engine" ON)
 option(BUILD_BUNDLED_FIO "Build bundled fio from fetched sources if no system fio is found" ON)
 
+# Tooling/quality toggles
+option(TOYSSD_ENABLE_WERROR "Treat warnings as errors on toyssd targets" OFF)
+## clang-tidy integration removed for now (can be reintroduced later)
+
 # Code coverage (local + CI)
 option(ENABLE_CODE_COVERAGE "Enable code coverage instrumentation and add a 'coverage' target" OFF)
 set(CODE_COVERAGE_THRESHOLD 20 CACHE STRING "Fail if line coverage is below this percent when running the 'coverage' target")
@@ -88,6 +92,22 @@ include(GNUInstallDirs)
 # Respects BUILD_TESTING set above.
 include(CTest) 
 
+########################################
+# Helper functions for target policies  #
+########################################
+
+function(toyssd_apply_werror tgt)
+  if(TOYSSD_ENABLE_WERROR AND TARGET ${tgt})
+    if(MSVC)
+      target_compile_options(${tgt} PRIVATE /WX)
+    else()
+      target_compile_options(${tgt} PRIVATE -Werror)
+    endif()
+  endif()
+endfunction()
+
+## toyssd_apply_clang_tidy removed (clang-tidy disabled for now)
+
 ############################
 # clang-format integration #
 ############################
@@ -106,20 +126,36 @@ file(GLOB_RECURSE TOYSSD_FORMAT_SOURCES
   ${CMAKE_SOURCE_DIR}/tests/*.[ch]
   ${CMAKE_SOURCE_DIR}/fio_plugin/*.[ch]
 )
+string(REPLACE ";" "\n" TOYSSD_FORMAT_SOURCES_NL "${TOYSSD_FORMAT_SOURCES}")
+set(TOYSSD_SCRIPT_DIR ${CMAKE_BINARY_DIR}/cmake-scripts)
+file(MAKE_DIRECTORY ${TOYSSD_SCRIPT_DIR})
 
 if(CLANG_FORMAT_EXE)
   message(STATUS "Found clang-format: ${CLANG_FORMAT_EXE}")
 
+  # Helper scripts for printing file lists and invoking clang-format
+  set(_CF_INPLACE_SCRIPT ${TOYSSD_SCRIPT_DIR}/run_clang_format_inplace.cmake)
+  file(WRITE ${_CF_INPLACE_SCRIPT}
+"message(\"clang-format will format the following files:\\n${TOYSSD_FORMAT_SOURCES_NL}\")\n"
+"execute_process(COMMAND \"${CLANG_FORMAT_EXE}\" -i ${TOYSSD_FORMAT_SOURCES} WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\" RESULT_VARIABLE rv)\n"
+"if(NOT rv EQUAL 0)\n  message(FATAL_ERROR \"clang-format (in-place) failed\")\nendif()\n")
+
+  set(_CF_CHECK_SCRIPT ${TOYSSD_SCRIPT_DIR}/run_clang_format_check.cmake)
+  file(WRITE ${_CF_CHECK_SCRIPT}
+"message(\"clang-format will check the following files:\\n${TOYSSD_FORMAT_SOURCES_NL}\")\n"
+"execute_process(COMMAND \"${CLANG_FORMAT_EXE}\" --dry-run --Werror ${TOYSSD_FORMAT_SOURCES} WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\" RESULT_VARIABLE rv)\n"
+"if(NOT rv EQUAL 0)\n  message(FATAL_ERROR \"clang-format-check failed\")\nendif()\n")
+
   # Target 'format' will format all C/C++ sources in key folders.
   add_custom_target(format
-    COMMAND ${CLANG_FORMAT_EXE} -i ${TOYSSD_FORMAT_SOURCES}
+    COMMAND ${CMAKE_COMMAND} -P ${_CF_INPLACE_SCRIPT}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Formatting C/C++ sources with clang-format"
   )
 
   # Target 'format-check' will fail on formatting diffs (useful for CI).
   add_custom_target(format-check
-    COMMAND ${CLANG_FORMAT_EXE} --dry-run --Werror ${TOYSSD_FORMAT_SOURCES}
+    COMMAND ${CMAKE_COMMAND} -P ${_CF_CHECK_SCRIPT}
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Checking C/C++ formatting (clang-format)"
   )
@@ -134,6 +170,22 @@ else() # No CLANG_FORMAT_EXE
 endif() # if(CLANG_FORMAT_EXE)
 
 # (format dependencies are added after targets are defined below)
+
+#########################
+# Python interpreter hint #
+#########################
+
+# If a Python virtual environment is active (e.g., via `uv` or `venv`), hint CMake
+# to use that interpreter for Python-based checks (cpplint). This helps when
+# configuring from a shell with the venv activated. VS Code CMake Tools does not
+# automatically activate venvs; you may need to export VIRTUAL_ENV + PATH in
+# cmake.configureEnvironment for the extension.
+if(DEFINED ENV{VIRTUAL_ENV})
+  set(_VENV_PY "$ENV{VIRTUAL_ENV}/bin/python")
+  if(EXISTS "${_VENV_PY}")
+    set(Python3_EXECUTABLE "${_VENV_PY}" CACHE FILEPATH "Python from active venv" FORCE)
+  endif()
+endif()
 
 #########################
 # cpplint (style checks) #
@@ -154,18 +206,37 @@ if(BUILD_TESTING)
     )
 
     if(CPPLINT_IMPORT_RESULT EQUAL 0)
-      # Use default cpplint settings; no custom filters/linelength
+      set(_LINT_SCRIPT ${TOYSSD_SCRIPT_DIR}/run_cpplint.cmake)
+      file(WRITE ${_LINT_SCRIPT}
+"message(\"[cpplint files]\\n${TOYSSD_FORMAT_SOURCES_NL}\")\n"
+"execute_process(COMMAND \"${Python3_EXECUTABLE}\" -m cpplint --quiet ${TOYSSD_FORMAT_SOURCES} RESULT_VARIABLE rv WORKING_DIRECTORY \"${CMAKE_SOURCE_DIR}\")\n"
+"if(NOT rv EQUAL 0)\n  message(FATAL_ERROR \"cpplint failed\")\nendif()\n")
       add_test(NAME cpplint
-               COMMAND ${Python3_EXECUTABLE} -m cpplint --quiet ${TOYSSD_FORMAT_SOURCES}
+               COMMAND ${CMAKE_COMMAND} -P ${_LINT_SCRIPT}
                WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
       set_tests_properties(cpplint PROPERTIES LABELS "lint;style")
     else()
-      message(STATUS "cpplint Python module not found; 'cpplint' CTest will not be added. Install via 'pip install -r requirements.txt'.")
+      message(STATUS "cpplint Python module not found; 'cpplint' CTest will not be added. Install via 'uv sync --all-extras'.")
     endif()
   else()
     message(STATUS "Python3 interpreter not found; skipping 'cpplint' CTest.")
   endif()
 endif()
+
+#########################
+# clang-format (CTest)   #
+#########################
+
+# In addition to build targets, expose a CTest for format check so CI or wrappers
+# can run it uniformly via ctest.
+if(BUILD_TESTING AND CLANG_FORMAT_EXE)
+  add_test(NAME clang-format-check
+           COMMAND ${CMAKE_COMMAND} -P ${_CF_CHECK_SCRIPT}
+           WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  set_tests_properties(clang-format-check PROPERTIES LABELS "lint;format")
+endif()
+
+## clang-tidy CTest removed for now
 
 ############################
 # External Dependencies    #
@@ -222,6 +293,7 @@ target_include_directories(ssdsim PUBLIC
 target_link_libraries(ssdsim PRIVATE simlib systemc)
 set_target_properties(ssdsim PROPERTIES EXPORT_NAME ssdsim)
 add_dependencies(ssdsim format)
+toyssd_apply_werror(ssdsim)
 
 # Provide a standalone sc_main stub library.
 # Useful with LD_PRELOAD on Linux to intercept/override sc_main resolution.
@@ -229,6 +301,7 @@ add_library(scmain_stub SHARED api/sc_main_stub.cpp)
 target_compile_features(scmain_stub PUBLIC cxx_std_20)
 set_target_properties(scmain_stub PROPERTIES OUTPUT_NAME scmain_stub)
 add_dependencies(scmain_stub format)
+toyssd_apply_werror(scmain_stub)
 
 ########################################
 # Tests (only if BUILD_TESTING is ON)  #
@@ -261,7 +334,9 @@ if(TOYSSD_BUILD_FIO_ENGINE)
 
   # Build fio external ioengine module that will dlopen libssdsim at runtime
   add_library(ssdsim_engine MODULE fio_plugin/ssdsim_engine.c)
-  target_include_directories(ssdsim_engine PRIVATE ${FIO_INCLUDE_DIR})
+  # Treat fio headers as system includes so warnings in dependency headers
+  # do not trip -Werror on our local target.
+  target_include_directories(ssdsim_engine SYSTEM PRIVATE ${FIO_INCLUDE_DIR})
 
   # macOS-specific tweaks:
   if(APPLE)
@@ -357,6 +432,8 @@ if(TOYSSD_BUILD_FIO_ENGINE)
     endif()
     set_tests_properties(FioDemo PROPERTIES LABELS "demo")
   endif()
+  # Apply policies to the ioengine too
+  toyssd_apply_werror(ssdsim_engine)
 endif() # TOYSSD_BUILD_FIO_ENGINE
 
 ########################################

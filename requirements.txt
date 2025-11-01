@@ -1,14 +1,6 @@
-# Python tooling for toyssd
-# Install with: pip install -r requirements.txt
-
-# Build helper
-cmake>=3.28
-
-# C/C++ style linter
-cpplint>=1.6.1
-
-# Optional: speed up installs and wheels
-wheel>=0.42
-
-# Code coverage report tool
-gcovr>=7.0
+# Deprecated: Python tooling is now managed via uv and pyproject.toml
+# This file is intentionally left as a stub for legacy references.
+# Please run:
+#   uv sync --all-extras
+# and use tasks via:
+#   uv run invoke <task>

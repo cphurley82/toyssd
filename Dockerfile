@@ -38,7 +38,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # - We clean apt lists at the end to reduce layer size.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential cmake git pkg-config \
-    python3 python3-pip python3-venv \
+    python3 python3-venv \
     clang-format clang-tidy cppcheck \
     libaio-dev zlib1g-dev libnuma-dev fio \
     ca-certificates curl wget \
@@ -46,12 +46,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
      || apt-get install -y --no-install-recommends libaio1t64) \
  && rm -rf /var/lib/apt/lists/*
 
-# Install Python requirements system-wide. On Ubuntu 24.04, pip enforces
-# externally-managed environments (PEP 668); use --break-system-packages to
-# install tooling like cpplint without a venv.
-COPY requirements.txt /tmp/requirements.txt
-RUN python3 -m pip install --break-system-packages -r /tmp/requirements.txt \
- && rm -f /tmp/requirements.txt
+# Install uv (fast Python package/dependency manager).
+# We install the single-file binary and expose it on the global PATH so it is
+# available even when running the container as a non-root user.
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh \
+ && ln -sf /root/.local/bin/uv /usr/local/bin/uv
+
+# Prepare a project metadata directory for dependency resolution via uv.
+# We only copy dependency metadata (not source) to keep the image generic.
+WORKDIR /opt/toyssd/app
+COPY pyproject.toml ./
+
+# Create a dedicated, immutable virtual environment for Python tooling within
+# the image using the project's pyproject.toml (avoids /src/.venv conflicts).
+# Note: If you add a uv.lock later, copy it here and add `--frozen` for
+# reproducible installs.
+ENV UV_PROJECT_ENVIRONMENT=/opt/toyssd/.venv
+RUN uv sync --extra dev --no-install-project
+
+# Make the prebuilt venv the default Python in the container and hint CMake.
+ENV VIRTUAL_ENV=/opt/toyssd/.venv
+ENV PATH="/opt/toyssd/.venv/bin:${PATH}" \
+    Python3_EXECUTABLE="/opt/toyssd/.venv/bin/python"
 
 # Default working directory for bind-mounted source
 WORKDIR /src
