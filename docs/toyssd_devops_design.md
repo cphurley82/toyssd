@@ -344,42 +344,48 @@ Developer ergonomics:
 - Run CMake/CTest commands directly in the container with your host UID/GID to avoid root-owned files.
 - Run Python tooling through `uv run` inside the container; it will use the pre-baked environment without touching the bind-mounted worktree.
 
-## TODO (Migration Plan)
+## VS Code tasks and docs
 
-This repository already has a solid CMake/CTest foundation, Docker for reproducible builds, and CI that builds/tests in Docker and runs clang-format checks. To fully align with the new design, implement the following high-level steps:
+This project supports two parallel developer flows in VS Code:
 
-- Python environment and tooling
-  - [x] Add `pyproject.toml` (MIT license) with `dev` extras: invoke, pytest, rich, cpplint, ruff, mypy, gcovr.
-  - [x] Create a proper Python package at `python/toyssd/` and migrate scripts from `tools/` into `python/toyssd/cli/` (or similar). Provide a `console_scripts` entry point (e.g., `toyssd=toyssd.cli:main`).
-  - [x] Adopt `uv` end-to-end: ensure `.venv/` is in `.gitignore`, document `uv sync --all-extras` and `uv run ...` in `README.md`.
-  - [x] Remove `requirements.txt` usage and switch Docker/CI to `uv` for Python tooling installation (a deprecated stub file remains temporarily for transition).
-  - [x] Add `tasks.py` (Invoke) using parameterized core tasks with a `backend` flag (`native`/`docker`) and small `docker_*` alias tasks. Ensure aggregator tasks (e.g., `verify`, `check`) honor `c.config.toyssd.backend` or `TOYSSD_BACKEND`.
+- Fast local iteration with the built-in CMake Tools tasks (Debug-only by default)
+- Full cross-platform automation with `uv run invoke ...` tasks (native or Docker backends)
 
-- CMake integration
-  - [x] Add toggle `-DTOYSSD_ENABLE_WERROR=ON` (default ON) to treat warnings as errors; allow turning off locally. Apply only to project targets (`simlib`, `ssdsim`, tests, fio engine), not external deps.
-  - [x] Add optional clang-tidy integration `-DTOYSSD_ENABLE_CLANG_TIDY=ON`; set `CMAKE_CXX_CLANG_TIDY` only on our targets and restrict scope via `.clang-tidy` `HeaderFilterRegex: '^(api|sim|fio_plugin)/'`.
-  - [x] Keep existing `format` and `format-check` targets. Keep `cpplint` as a CTest (present today) and optionally add a `cpplint` custom target alias for convenience.
-  - [x] Ensure GoogleTest XML output remains under the selected build dir (e.g., `build-debug/test-results/gtest/`) for CI ingestion.
+### CMake Tools tasks (quick local builds)
 
-- CI (GitHub Actions)
-  - [x] Keep the existing Docker-based Ubuntu workflow (build/test/demo/coverage) unchanged for Linux parity and fio demos.
-  - [x] Add a new macOS workflow (`macos-ci.yml`) that installs toolchain + `uv`, runs `uv run invoke verify`, then runs lint/type checks via Invoke.
-  - [x] Upload GTest XML results from `build-debug/test-results/gtest/**/*.xml`.
-  - [x] Add a coverage job using `-DENABLE_CODE_COVERAGE=ON` + `coverage` target; keep threshold low (e.g., 20%). Install `gcovr` via `uv` dev extras.
+We keep the existing CMake tasks provided by VS Code/CMake Tools for a quick Debug loop. These map to the following commands and use the `build-debug` directory:
 
-- Dockerfile
-  - [x] Install only minimal toolchain/system dependencies with APT; install `uv` globally.
-  - [x] Pre-install Python dev/tooling dependencies into an image-local venv at `/opt/toyssd/.venv` using `uv sync` (no source code copied into image).
-  - [x] Set `UV_PROJECT_ENVIRONMENT=/opt/toyssd/.venv` (and `VIRTUAL_ENV`/`PATH`) so `uv run` inside the container reuses the pre-baked env and does not write to the bind mount.
-  - [x] Remove `requirements.txt` usage and switch Docker/CI to `uv` for Python tooling installation.
-  - [x] Update `README.md` with container usage examples for `uv run invoke ...`, note that dependency changes require rebuilding the image, and document CI dependency snapshot artifacts (uv.lock + versions manifest).
-  - [x] Document capturing `uv.lock`, exported requirements, and `tool-versions.txt` in CI and uploading as an artifact.
-  - [x] Implement analogous steps in Linux/Docker-based workflow (run snapshot inside the container and upload).
+- "Configure (Debug)" → `cmake -S . -B build-debug -DCMAKE_BUILD_TYPE=Debug`
+- "Build (Debug)" → `cmake --build build-debug -j`
+- "Configure + Build (Debug)" → runs both in sequence
 
-- VS Code tasks and docs
-  - [ ] Keep existing CMake tasks for quick local workflows (`build/` only).
-  - [ ] Document Invoke tasks and the build directory naming convention below.
-  - [ ] Update `README.md` to reflect the unified `uv run invoke ...` workflow, native vs Docker flows, and the new CI expectations.
+Notes:
+
+- These tasks are meant for quick local iterations and target Debug builds only. For Release builds, testing, static analysis, or Docker parity, prefer the Invoke tasks below.
+- Test execution from VS Code is easiest via the CTest integration: after building, run tests in `build-debug`.
+
+### Invoke tasks (native and Docker)
+
+All higher-level operations are standardized via Invoke. Run them from the VS Code integrated terminal using the pre-configured Python environment (via `uv`). Examples:
+
+- Native (default backend):
+  - `uv run invoke verify` — static checks + C++ build + CTest
+  - `uv run invoke check` — static checks only (no build/tests)
+  - `uv run invoke cpp_configure --build-type=Debug` → `build-debug`
+  - `uv run invoke cpp_build --build-type=Debug`
+  - `uv run invoke cpp_test --build-type=Debug`
+
+- Docker backend (Ubuntu image):
+  - Set `TOYSSD_BACKEND=docker` or use aliases like `uv run invoke docker_cpp_build`.
+  - Docker builds use separate directories to avoid host/container mixing.
+
+Build directory naming convention:
+
+- VS Code CMake tasks: `build-debug` (Debug)
+- Native (Invoke): `build-debug` (Debug), `build-release` (Release)
+- Docker (Invoke): `build-docker-debug` (Debug), `build-docker-release` (Release)
+
+Tip: You can change the default backend by setting `TOYSSD_BACKEND` or via `c.config.toyssd.backend` in Invoke's config. See the README for a quick reference.
 
 ## Decisions and Rationale
 

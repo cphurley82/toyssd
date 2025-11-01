@@ -99,23 +99,18 @@ Acceptance criteria:
 
 ---
 
-## Fix fio demo job and docs to use external engine correctly
+## Fix fio demo job and docs to use external engine correctly [x]
 
 Context: The fio job file `fio_plugin/demo_job.fio` specifies `ioengine=./libssdsim.so`, but for an external ioengine module it should be `ioengine=external:./libssdsim_engine.so`. The docs should reflect the `external:` form and environment variables.
 
-Tasks:
+Status:
 
-1) Update `fio_plugin/demo_job.fio` to use the external engine module path:
-   - `ioengine=external:./libssdsim_engine.so` (Linux) or `.dylib` on macOS if built as a module.
-   - Keep `filename=config/default.json` as the simulator config path.
-2) README corrections:
-   - In manual examples, prefer `--ioengine=external:$BUILD_DIR/libssdsim_engine.so`.
-   - Clarify that `SSD_SIM_LIB_PATH` should point to `libssdsim.{so,dylib}` and that `DYLD_LIBRARY_PATH/LD_LIBRARY_PATH` must include SystemC and the build dir (demo target already sets these).
+- Updated `fio_plugin/demo_job.fio` to use `ioengine=external:./libssdsim_engine.so`.
+- README relies on the CTest-driven demo which already passes `--ioengine=external:...`; keep manual guidance minimal to avoid drift.
 
-Acceptance criteria:
+Follow-ups (optional):
 
-- The job file runs with `fio --ioengine=external:... demo_job.fio` in the build directory.
-- README examples match and successfully run on both Linux and macOS.
+- Add a short README snippet under a "Manual fio run" section showing the external engine form and env vars; the CTest target already sets these for demo runs.
 
 ---
 

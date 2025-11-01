@@ -1,5 +1,6 @@
 [demo]
-ioengine=./libssdsim.so
+# Use the external ioengine module. CMake demos pass this via --ioengine=external:... too.
+ioengine=external:./libssdsim_engine.so
 rw=randwrite
 bs=4k
 size=64M
