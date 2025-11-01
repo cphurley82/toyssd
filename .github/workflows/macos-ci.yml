@@ -13,7 +13,7 @@ jobs:
       - name: Install system deps (brew)
         run: |
           brew update
-          brew install uv cmake ninja llvm clang-format clang-tidy
+          brew install uv cmake ninja llvm clang-format
 
       - name: Install Python deps (uv)
         run: uv sync --all-extras
