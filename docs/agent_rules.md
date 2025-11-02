@@ -8,6 +8,16 @@ Guiding principles
 - Prefer editing existing code over large rewrites.
 - Update nearby docs/tests when behavior changes.
 
+Clean code principles
+
+- **No magic numbers**: Use named constants (C++) or define module-level constants (Python)
+- **Single Responsibility**: Each function/class should have one clear purpose
+- **Self-documenting code**: Use descriptive names; add docstrings/comments for complex logic
+- **DRY**: Extract repeated code into functions; avoid duplication
+- **Type safety**: Use type hints in Python; leverage C++ type system
+- **Small functions**: Keep functions focused and under ~50 lines when possible
+- **Meaningful documentation**: Add Doxygen comments for public C++ APIs; use Python docstrings with types
+
 Required checks after each substantive change
 
 1) Run the unified verification flow locally:

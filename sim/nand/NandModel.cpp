@@ -6,6 +6,8 @@
 #include <string>
 #include <vector>
 
+#include "sim/util/Constants.h"
+
 namespace {
 std::string make_key(const NandCmd::Address& addr) {
   // Compose a compact, stable key from all address fields
@@ -71,14 +73,14 @@ void NandModel::b_transport(NandCmd& cmd, sc_core::sc_time& /*delay*/) {
         // Page not programmed/erased: return erased state (0xFF)
         if (cmd.data.has_value()) {
           auto dst = cmd.data.value();
-          constexpr unsigned char kErasedByte = 0xFF;
           if (!dst.empty()) {
-            std::memset(dst.data(), kErasedByte, dst.size());
+            std::memset(dst.data(), toyssd::constants::kErasedByteValue,
+                        dst.size());
           }
         }
         if (!cmd.metadata.empty()) {
-          constexpr unsigned char kErasedByte = 0xFF;
-          std::memset(cmd.metadata.data(), kErasedByte, cmd.metadata.size());
+          std::memset(cmd.metadata.data(), toyssd::constants::kErasedByteValue,
+                      cmd.metadata.size());
         }
       }
       break;

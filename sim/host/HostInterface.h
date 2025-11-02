@@ -7,6 +7,7 @@
 
 #include "api/ssdsim_api.h"
 #include "sim/util/Compat.h"
+#include "sim/util/Constants.h"
 #include "systemc"
 
 struct IORequest {
@@ -30,8 +31,8 @@ inline std::ostream& operator<<(std::ostream& os, const Completion& c) {
 }
 
 struct HostInterface : sc_core::sc_module {
-  sc_core::sc_fifo<IORequest*> to_fw{1024};
-  sc_core::sc_fifo<Completion> from_fw{1024};
+  sc_core::sc_fifo<IORequest*> to_fw{toyssd::constants::kDefaultFifoSize};
+  sc_core::sc_fifo<Completion> from_fw{toyssd::constants::kDefaultFifoSize};
 
   SC_CTOR(HostInterface) {}
 

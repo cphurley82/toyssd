@@ -39,129 +39,162 @@ def run_cmd(c, cmd: str, backend: str, image: str = "toyssd"):
 # ----------------------- env/tasks -----------------------
 
 
-@task
-def env_check(c):
-    """Verify required and optional tools with color-coded summary."""
+class ToolChecker:
+    """Handles toolchain verification with color-coded output."""
+
+    # ANSI color codes
     GREEN = "\033[32m"
     YELLOW = "\033[33m"
     RED = "\033[31m"
     CYAN = "\033[36m"
     RESET = "\033[0m"
 
-    def ok(msg: str):
-        print(f"{GREEN}✔ {msg}{RESET}")
+    def __init__(self, context):
+        self.context = context
+        self.missing_required = []
+        self.missing_optional = []
 
-    def warn(msg: str):
-        print(f"{YELLOW}⚠ {msg}{RESET}")
+    def ok(self, msg: str) -> None:
+        print(f"{self.GREEN}✔ {msg}{self.RESET}")
 
-    def fail(msg: str):
-        print(f"{RED}✖ {msg}{RESET}")
+    def warn(self, msg: str) -> None:
+        print(f"{self.YELLOW}⚠ {msg}{self.RESET}")
 
-    def run_silent(cmd: str):
-        r = c.run(cmd, warn=True, hide=True)
+    def fail(self, msg: str) -> None:
+        print(f"{self.RED}✖ {msg}{self.RESET}")
+
+    def run_silent(self, cmd: str) -> tuple[bool, str]:
+        r = self.context.run(cmd, warn=True, hide=True)
         return r.ok, r.stdout.strip()
 
-    print(f"{CYAN}Checking toolchain...{RESET}")
+    def check_cmake(self) -> None:
+        """Check for required cmake installation."""
+        cmake_ok, cmake_ver = self.run_silent("cmake --version")
+        if cmake_ok:
+            first = cmake_ver.splitlines()[0] if cmake_ver else "cmake (version unknown)"
+            self.ok(first)
+        else:
+            self.fail("cmake not found (required). Install cmake and ensure it's on PATH.")
+            self.missing_required.append("cmake")
 
-    missing_required = []
-    missing_optional = []
+    def check_uv(self) -> None:
+        """Check for required uv installation."""
+        uv_ok, uv_ver = self.run_silent("uv --version")
+        if uv_ok:
+            self.ok(f"uv {uv_ver}")
+        else:
+            self.fail("uv not found (required). Install via Homebrew or follow uv docs.")
+            self.missing_required.append("uv")
 
-    # Required: cmake
-    cmake_ok, cmake_ver = run_silent("cmake --version")
-    if cmake_ok:
-        first = cmake_ver.splitlines()[0] if cmake_ver else "cmake (version unknown)"
-        ok(first)
-    else:
-        fail("cmake not found (required). Install cmake and ensure it's on PATH.")
-        missing_required.append("cmake")
+    def check_clang_format(self) -> None:
+        """Check for optional clang-format installation."""
+        cf_ok, cf_ver = self.run_silent("clang-format --version")
+        if cf_ok:
+            self.ok(cf_ver.splitlines()[0])
+        else:
+            self.warn("clang-format not found (optional). CMake format targets will no-op.")
+            self.missing_optional.append("clang-format")
 
-    # Required: uv
-    uv_ok, uv_ver = run_silent("uv --version")
-    if uv_ok:
-        ok(f"uv {uv_ver}")
-    else:
-        fail("uv not found (required). Install via Homebrew or follow uv docs.")
-        missing_required.append("uv")
+    def check_clang_tidy(self) -> None:
+        """Check for optional clang-tidy installation."""
+        ct_ok, ct_ver = self.run_silent("clang-tidy --version")
+        if ct_ok:
+            self.ok(ct_ver.splitlines()[0])
+        else:
+            self.warn(
+                "clang-tidy not found (optional). Enable via Homebrew or your toolchain; "
+                "Invoke cpp_analyze will skip if unavailable."
+            )
+            self.missing_optional.append("clang-tidy")
 
-    # Optional: clang-format
-    cf_ok, cf_ver = run_silent("clang-format --version")
-    if cf_ok:
-        ok(cf_ver.splitlines()[0])
-    else:
-        warn("clang-format not found (optional). CMake format targets will no-op.")
-        missing_optional.append("clang-format")
-
-    # Optional: clang-tidy
-    ct_ok, ct_ver = run_silent("clang-tidy --version")
-    if ct_ok:
-        ok(ct_ver.splitlines()[0])
-    else:
-        warn(
-            "clang-tidy not found (optional). Enable via Homebrew or your toolchain; "
-            "Invoke cpp_analyze will skip if unavailable."
+    def check_cpplint(self) -> None:
+        """Check for optional cpplint installation."""
+        cpplint_present, _ = self.run_silent(
+            "uv run python -c 'import importlib.util as util,sys; "
+            'sys.exit(0 if util.find_spec("cpplint") else 1)\''
         )
-        missing_optional.append("clang-tidy")
+        if cpplint_present:
+            self._check_cpplint_venv()
+        else:
+            self._check_cpplint_system()
 
-    # Optional: cpplint — prefer venv module (for CTest), then CLI as fallback for version reporting
-    cpplint_present, _ = run_silent(
-        "uv run python -c 'import importlib.util as util,sys; "
-        'sys.exit(0 if util.find_spec("cpplint") else 1)\''
-    )
-    if cpplint_present:
-        # Try importlib.metadata for the distribution version; fallback to module __version__
-        # as last resort, CLI
-        meta_ok, meta_out = run_silent(
+    def _check_cpplint_venv(self) -> None:
+        """Check cpplint version in venv."""
+        meta_ok, meta_out = self.run_silent(
             "uv run python -c 'import importlib.metadata as m; print(m.version(\"cpplint\"))'"
         )
         if meta_ok and meta_out:
-            ok(f"cpplint {meta_out.strip()} (uv venv)")
+            self.ok(f"cpplint {meta_out.strip()} (uv venv)")
         else:
-            # Fallback to module attribute
-            mod_ok, mod_out = run_silent(
-                "uv run python -c 'import cpplint; "
-                'print(getattr(cpplint,"__version__","unknown"))\''
-            )
-            ver = mod_out.strip() if mod_ok and mod_out else "unknown"
-            if ver == "unknown":
-                # Fallback to CLI in venv to extract version line if possible
-                cli_ok, cli_out = run_silent("uv run cpplint --version")
-                if cli_ok and cli_out:
-                    ver_line = next(
-                        (ln for ln in cli_out.splitlines() if ln.lower().startswith("cpplint ")),
-                        None,
-                    )
-                    if ver_line:
-                        ver = ver_line.strip().split(" ", 1)[-1]
-            ok(f"cpplint {ver} (uv venv)")
-    else:
-        # Not importable in venv — see if a system CLI exists
-        cli_ok, cli_out = run_silent("cpplint --version")
+            ver = self._get_cpplint_fallback_version()
+            self.ok(f"cpplint {ver} (uv venv)")
+
+    def _get_cpplint_fallback_version(self) -> str:
+        """Get cpplint version using fallback methods."""
+        mod_ok, mod_out = self.run_silent(
+            "uv run python -c 'import cpplint; "
+            'print(getattr(cpplint,"__version__","unknown"))\''
+        )
+        ver = mod_out.strip() if mod_ok and mod_out else "unknown"
+        if ver == "unknown":
+            cli_ok, cli_out = self.run_silent("uv run cpplint --version")
+            if cli_ok and cli_out:
+                ver_line = next(
+                    (ln for ln in cli_out.splitlines() if ln.lower().startswith("cpplint ")),
+                    None,
+                )
+                if ver_line:
+                    ver = ver_line.strip().split(" ", 1)[-1]
+        return ver
+
+    def _check_cpplint_system(self) -> None:
+        """Check for cpplint on system PATH."""
+        cli_ok, cli_out = self.run_silent("cpplint --version")
         if cli_ok and cli_out:
             ver_line = next(
                 (ln for ln in cli_out.splitlines() if ln.lower().startswith("cpplint ")), None
             )
             if ver_line:
-                ok(f"cpplint {ver_line.strip().split(' ', 1)[-1]} (system CLI)")
+                self.ok(f"cpplint {ver_line.strip().split(' ', 1)[-1]} (system CLI)")
             else:
-                ok("cpplint (system CLI) present")
-            warn(
+                self.ok("cpplint (system CLI) present")
+            self.warn(
                 "cpplint not installed in uv venv — CTest cpplint may be skipped. "
                 "Run: uv sync --all-extras"
             )
         else:
-            warn("cpplint not found (optional). Run: uv sync --all-extras")
-        missing_optional.append("cpplint")
+            self.warn("cpplint not found (optional). Run: uv sync --all-extras")
+        self.missing_optional.append("cpplint")
 
-    # Summary
-    if missing_required:
-        fail(f"Environment check: FAIL — missing required tools: {', '.join(missing_required)}")
-    elif missing_optional:
-        warn(
-            "Environment check: PASS (required OK) — missing optional: "
-            f"{', '.join(missing_optional)}"
-        )
-    else:
-        ok("Environment check: PASS — all tools present")
+    def print_summary(self) -> None:
+        """Print final environment check summary."""
+        if self.missing_required:
+            self.fail(
+                f"Environment check: FAIL — missing required tools: "
+                f"{', '.join(self.missing_required)}"
+            )
+        elif self.missing_optional:
+            self.warn(
+                "Environment check: PASS (required OK) — missing optional: "
+                f"{', '.join(self.missing_optional)}"
+            )
+        else:
+            self.ok("Environment check: PASS — all tools present")
+
+
+@task
+def env_check(c):
+    """Verify required and optional tools with color-coded summary."""
+    checker = ToolChecker(c)
+    print(f"{checker.CYAN}Checking toolchain...{checker.RESET}")
+
+    checker.check_cmake()
+    checker.check_uv()
+    checker.check_clang_format()
+    checker.check_clang_tidy()
+    checker.check_cpplint()
+
+    checker.print_summary()
 
 
 @task

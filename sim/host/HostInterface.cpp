@@ -9,6 +9,7 @@
 #include "../Top.h"
 #include "../fw/Firmware.h"
 #include "sim/util/Compat.h"
+#include "sim/util/Constants.h"
 #include "systemc"
 
 // Avoid using-directives; use explicit sc_core:: qualifiers.
@@ -31,8 +32,8 @@ int HostInterface::poll(int max_completions, ssd_cpl_t* out) {
   while (produced < max_completions && from_fw.nb_read(cpl)) {
     out[produced].user_tag = cpl.user_tag;
     out[produced].status = cpl.status;
-    constexpr double kNsPerSec = 1'000'000'000.0;
-    double latency_ns = cpl.latency.to_seconds() * kNsPerSec;
+    double latency_ns =
+        cpl.latency.to_seconds() * toyssd::constants::kNanosecondsPerSecond;
     if (latency_ns < 0.0) {
       latency_ns = 0.0;
     }
@@ -86,12 +87,13 @@ int poll_cxx(int max_cpls, ssd_cpl_t* out_cpls) {
   }
   // Try to advance simulation in small quanta until we have at least one
   // completion or we hit a small number of iterations to avoid blocking.
-  constexpr int kMaxIters = 100;
-  constexpr int kStepUs = 10;
   int total = 0;
-  for (int iter = 0; iter < kMaxIters && total < max_cpls; ++iter) {
+  for (int iter = 0;
+       iter < toyssd::constants::kPollMaxIterations && total < max_cpls;
+       ++iter) {
     // Advance simulation time by a small amount; adjust as needed
-    sc_core::sc_start(sc_core::sc_time(kStepUs, sc_core::SC_US));
+    sc_core::sc_start(sc_core::sc_time(toyssd::constants::kPollStepMicroseconds,
+                                       sc_core::SC_US));
     // Drain completions from firmware
     const int newly_produced = g_host->poll(max_cpls - total, out_cpls + total);
     if (newly_produced > 0) {
