@@ -68,12 +68,11 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           docker run --rm -t -v "$PWD":/src -w /src toyssd \
-            ctest --test-dir build-debug -L demo --output-on-failure
+            uv run invoke demo
 
       - name: Run CTest demo
         if: runner.os == 'macOS'
-        run: |
-          ctest --test-dir build-debug -L demo --output-on-failure
+        run: uv run invoke demo
 
       # ---------------------- Coverage (CMake target) ----------------------
       - name: Build coverage and generate report

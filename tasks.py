@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
-from invoke import task
 
+from invoke import task
 
 # ----------------------- helpers -----------------------
 
@@ -97,16 +97,19 @@ def env_check(c):
         ok(ct_ver.splitlines()[0])
     else:
         warn(
-            "clang-tidy not found (optional). Enable via Homebrew or your toolchain; Invoke cpp_analyze will skip if unavailable."
+            "clang-tidy not found (optional). Enable via Homebrew or your toolchain; "
+            "Invoke cpp_analyze will skip if unavailable."
         )
         missing_optional.append("clang-tidy")
 
     # Optional: cpplint — prefer venv module (for CTest), then CLI as fallback for version reporting
     cpplint_present, _ = run_silent(
-        "uv run python -c 'import importlib.util,sys; sys.exit(0 if importlib.util.find_spec(\"cpplint\") else 1)'"
+        "uv run python -c 'import importlib.util as util,sys; "
+        'sys.exit(0 if util.find_spec("cpplint") else 1)\''
     )
     if cpplint_present:
-        # Try importlib.metadata for the distribution version; fallback to module __version__; as last resort, CLI
+        # Try importlib.metadata for the distribution version; fallback to module __version__
+        # as last resort, CLI
         meta_ok, meta_out = run_silent(
             "uv run python -c 'import importlib.metadata as m; print(m.version(\"cpplint\"))'"
         )
@@ -115,7 +118,8 @@ def env_check(c):
         else:
             # Fallback to module attribute
             mod_ok, mod_out = run_silent(
-                'uv run python -c \'import cpplint; print(getattr(cpplint,"__version__","unknown"))\''
+                "uv run python -c 'import cpplint; "
+                'print(getattr(cpplint,"__version__","unknown"))\''
             )
             ver = mod_out.strip() if mod_ok and mod_out else "unknown"
             if ver == "unknown":
@@ -141,7 +145,8 @@ def env_check(c):
             else:
                 ok("cpplint (system CLI) present")
             warn(
-                "cpplint not installed in uv venv — CTest cpplint may be skipped. Run: uv sync --all-extras"
+                "cpplint not installed in uv venv — CTest cpplint may be skipped. "
+                "Run: uv sync --all-extras"
             )
         else:
             warn("cpplint not found (optional). Run: uv sync --all-extras")
@@ -150,17 +155,17 @@ def env_check(c):
     # Summary
     if missing_required:
         fail(f"Environment check: FAIL — missing required tools: {', '.join(missing_required)}")
+    elif missing_optional:
+        warn(
+            "Environment check: PASS (required OK) — missing optional: "
+            f"{', '.join(missing_optional)}"
+        )
     else:
-        if missing_optional:
-            warn(
-                f"Environment check: PASS (required OK) — missing optional: {', '.join(missing_optional)}"
-            )
-        else:
-            ok("Environment check: PASS — all tools present")
+        ok("Environment check: PASS — all tools present")
 
 
 @task
-def cpp_configure(c, build_type="Debug", backend=None, werror=True, tidy=False):
+def cpp_configure(c, build_type="Debug", backend=None, *, werror=True, tidy=False):
     backend = get_backend(c, backend)
     bdir = build_dir_for(backend, build_type)
     flags = [
@@ -302,7 +307,15 @@ def coverage(c, backend: str | None = None, threshold: int | None = None):
 
 
 @task
-def docker_cpp_configure(c, build_type="Debug", werror=True):
+def demo(c, backend: str | None = None):
+    """Run the fio demo CTest label."""
+    backend = get_backend(c, backend)
+    bdir = build_dir_for(backend, "Debug")
+    run_cmd(c, f"ctest --test-dir {bdir} -L demo --output-on-failure", backend)
+
+
+@task
+def docker_cpp_configure(c, build_type="Debug", *, werror=True):
     cpp_configure(c, build_type=build_type, backend="docker", werror=werror)
 
 
