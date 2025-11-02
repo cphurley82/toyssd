@@ -15,6 +15,14 @@ target_include_directories(unit_tests PRIVATE ${CMAKE_SOURCE_DIR})
 # Link the core simulator, SystemC, and GoogleTest main
 target_link_libraries(unit_tests PRIVATE simlib systemc gtest_main)
 
+if(APPLE)
+  set(_unit_tests_rpath "@loader_path/../../_vendor/systemc/lib;@loader_path/../../lib;@loader_path/../lib")
+else()
+  set(_unit_tests_rpath "$ORIGIN/../../_vendor/systemc/lib;$ORIGIN/../../lib;$ORIGIN/../lib")
+endif()
+list(APPEND _unit_tests_rpath "${SYSTEMC_PREFIX}/lib")
+set_target_properties(unit_tests PROPERTIES BUILD_RPATH "${_unit_tests_rpath}")
+
 include(GoogleTest)
 # Register individual tests dynamically (avoids needing to keep add_test in
 # sync; works with filtering via ctest -R <regex>). Also have GoogleTest emit

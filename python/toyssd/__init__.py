@@ -1,6 +1,5 @@
-"""toyssd Python package.
+"""Python bindings for the toy SSD SystemC simulator."""
 
-CLI and helper utilities for the Toy SSD simulator project.
-"""
+from ._bootstrap import ToySSD
 
-__all__ = []
+__all__ = ["ToySSD"]

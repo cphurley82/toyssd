@@ -3,6 +3,20 @@
 
 #include "sim/fw/FTL.h"  // for PhysicalPage definition
 
+void NandInterfaceImpl::attach(NandModel* model) { model_ = model; }
+
+namespace {
+inline NandModel* resolve_model(
+    NandModel* attached,
+    tlm_utils::simple_initiator_socket<NandInterfaceImpl>& socket) {
+  if (attached != nullptr) {
+    return attached;
+  }
+  auto* iface = socket.get_base_port().get_interface();
+  return dynamic_cast<NandModel*>(iface);
+}
+}  // namespace
+
 sc_core::sc_time NandInterfaceImpl::read(const PhysicalPage& page,
                                          uint8_t* /*dst*/) {
   NandCmd cmd;
@@ -17,11 +31,10 @@ sc_core::sc_time NandInterfaceImpl::read(const PhysicalPage& page,
   cmd.addr.plane = 0;
   cmd.data = std::nullopt;  // Data is optional
   sc_core::sc_time delay = sc_core::SC_ZERO_TIME;
-  // Shortcut call into model (non-standard). In a full impl, use TLM GP +
-  // extension.
-  auto* tgt = dynamic_cast<NandModel*>(socket.get_base_port().get_interface());
+  auto* tgt = resolve_model(model_, socket);
   if (tgt != nullptr) {
     tgt->b_transport(cmd, delay);
+    tgt->record_event(cmd, delay);
   }
   return delay;
 }
@@ -38,9 +51,10 @@ sc_core::sc_time NandInterfaceImpl::program(const PhysicalPage& page,
   cmd.addr.plane = 0;
   cmd.data = std::nullopt;  // Optional by design
   sc_core::sc_time delay = sc_core::SC_ZERO_TIME;
-  auto* tgt = dynamic_cast<NandModel*>(socket.get_base_port().get_interface());
+  auto* tgt = resolve_model(model_, socket);
   if (tgt != nullptr) {
     tgt->b_transport(cmd, delay);
+    tgt->record_event(cmd, delay);
   }
   return delay;
 }
@@ -56,9 +70,10 @@ sc_core::sc_time NandInterfaceImpl::erase(uint32_t die, uint32_t block) {
   cmd.addr.plane = 0;
   cmd.data = std::nullopt;
   sc_core::sc_time delay = sc_core::SC_ZERO_TIME;
-  auto* tgt = dynamic_cast<NandModel*>(socket.get_base_port().get_interface());
+  auto* tgt = resolve_model(model_, socket);
   if (tgt != nullptr) {
     tgt->b_transport(cmd, delay);
+    tgt->record_event(cmd, delay);
   }
   return delay;
 }

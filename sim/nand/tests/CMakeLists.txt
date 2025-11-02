@@ -13,6 +13,14 @@ target_include_directories(nand_tests PRIVATE ${CMAKE_SOURCE_DIR})
 # Link the core simulator, SystemC, and GoogleTest main
 target_link_libraries(nand_tests PRIVATE simlib systemc gtest_main)
 
+if(APPLE)
+  set(_nand_tests_rpath "@loader_path/../../../_vendor/systemc/lib;@loader_path/../../../lib;@loader_path/../../lib")
+else()
+  set(_nand_tests_rpath "$ORIGIN/../../../_vendor/systemc/lib;$ORIGIN/../../../lib;$ORIGIN/../../lib")
+endif()
+list(APPEND _nand_tests_rpath "${SYSTEMC_PREFIX}/lib")
+set_target_properties(nand_tests PROPERTIES BUILD_RPATH "${_nand_tests_rpath}")
+
 include(GoogleTest)
 
 # Where to write GoogleTest XML results (one file per discovered test)

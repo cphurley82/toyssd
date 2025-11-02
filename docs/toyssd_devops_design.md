@@ -16,7 +16,6 @@ This document outlines a consistent DevOps workflow for the toyssd project acros
 - [CI Workflow (GitHub Actions)](#ci-workflow-github-actions)
 - [Developer Workflow](#developer-workflow)
 - [Dockerfile](#dockerfile)
-- [TODO (Migration Plan)](#todo-migration-plan)
 - [Decisions and Rationale](#decisions-and-rationale)
 - [Summary](#summary)
 
@@ -321,7 +320,7 @@ Tip: You can change the default backend by setting `TOYSSD_BACKEND` or via `c.co
 ## Decisions and Rationale
 
 - Python package layout
-  - We will create `python/toyssd/` and migrate scripts from `tools/` into that package (likely `python/toyssd/cli/`). This enables packaging and a clean `console_scripts` entry point.
+  - `python/toyssd/` hosts the Python API (`ToySSD` wrapper) that instantiates the SystemC top module via PySysC/cppyy. CLI helpers may return later as thin wrappers around this API.
 
 - Dependency management
   - Fully migrate to `uv` + `pyproject.toml`; remove `requirements.txt` and any global `pip` installs from Docker.

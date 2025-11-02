@@ -48,5 +48,36 @@ set_target_properties(sim_main PROPERTIES
 toyssd_apply_werror(sim_main)
 toyssd_apply_clang_tidy(sim_main)
 
+# Python adapter library (optional)
+if(TOYSSD_BUILD_PYTHON)
+  add_library(toyssd_pycore SHARED
+    python/ToyssdPyAdapter.cpp
+  )
+  target_compile_features(toyssd_pycore PUBLIC cxx_std_20)
+  target_include_directories(toyssd_pycore PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    $<INSTALL_INTERFACE:include/toyssd/sim>
+  )
+  target_link_libraries(toyssd_pycore PRIVATE simlib systemc scmain_stub)
+  add_dependencies(toyssd_pycore systemc_ext)
+  if(APPLE)
+    set(_toyssd_py_rpath "@loader_path;@loader_path/../lib;@loader_path/../_vendor/systemc/lib")
+  else()
+    set(_toyssd_py_rpath "$ORIGIN;$ORIGIN/../lib;$ORIGIN/../_vendor/systemc/lib")
+  endif()
+  set_target_properties(toyssd_pycore PROPERTIES
+    INSTALL_RPATH "${_toyssd_py_rpath}"
+    BUILD_RPATH "${_toyssd_py_rpath}"
+  )
+  set_target_properties(toyssd_pycore PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
+    EXPORT_NAME toyssd_pycore
+  )
+  toyssd_apply_werror(toyssd_pycore)
+  toyssd_apply_clang_tidy(toyssd_pycore)
+endif()
+
 # Subdirectory for NAND-specific configuration and tests
 add_subdirectory(nand)

@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.28) # Ubuntu 24.04 LTS provides CMake 3.28.
 
+if(POLICY CMP0169)
+  cmake_policy(SET CMP0169 OLD)
+endif()
+
 #
 # toyssd — Top-level CMake
 #
@@ -25,6 +29,7 @@ option(BUILD_TESTING "Enable building unit tests" ON)
 option(TOYSSD_BUILD_FIO_ENGINE "Build bundled fio external ioengine" ON)
 option(TOYSSD_BUILD_DEMOS "Add demo custom targets that run fio with the engine" ON)
 option(BUILD_BUNDLED_FIO "Build bundled fio from fetched sources if no system fio is found" ON)
+option(TOYSSD_BUILD_PYTHON "Build Python bindings and vendored dependencies" ON)
 
 # Tooling/quality toggles
 option(TOYSSD_ENABLE_WERROR "Treat warnings as errors on toyssd targets" ON)
@@ -352,23 +357,96 @@ if(BUILD_TESTING)
   FetchContent_MakeAvailable(googletest)
 endif() # 
 
-# SystemC (3.0.1+)
-# We fetch SystemC as a subproject. To speed up builds and keep logs clean,
-# disable examples and regression tests in the upstream project.
-set(ENABLE_EXAMPLES   OFF CACHE BOOL "Disable SystemC examples" FORCE)
-set(ENABLE_REGRESSION OFF CACHE BOOL "Disable SystemC regression tests" FORCE)
-FetchContent_Declare(
-  systemc
-  GIT_REPOSITORY https://github.com/accellera-official/systemc.git
-  GIT_TAG 3.0.1
+# SystemC (3.0.2) — build from source via ExternalProject
+include(ExternalProject)
+
+set(SYSTEMC_VERSION 3.0.2)
+set(SYSTEMC_PREFIX ${CMAKE_BINARY_DIR}/_deps/systemc)
+file(MAKE_DIRECTORY ${SYSTEMC_PREFIX}/include)
+file(MAKE_DIRECTORY ${SYSTEMC_PREFIX}/lib)
+
+ExternalProject_Add(systemc_ext
+  URL https://github.com/accellera-official/systemc/archive/refs/tags/${SYSTEMC_VERSION}.tar.gz
+  UPDATE_DISCONNECTED 1
+  CMAKE_ARGS
+    -DCMAKE_INSTALL_PREFIX=${SYSTEMC_PREFIX}
+    -DCMAKE_BUILD_TYPE=$<IF:$<CONFIG:>,${CMAKE_BUILD_TYPE},$<CONFIG>>
+    -DCMAKE_CXX_STANDARD=${CMAKE_CXX_STANDARD}
+    -DENABLE_EXAMPLES=OFF
+    -DENABLE_REGRESSION=OFF
+  BUILD_BYPRODUCTS
+    ${SYSTEMC_PREFIX}/lib/${CMAKE_SHARED_LIBRARY_PREFIX}systemc${CMAKE_SHARED_LIBRARY_SUFFIX}
 )
-# Keep SystemC's C++ standard and build type aligned with the project's by 
-# default.
-# Users can still override these via -DSystemC_BUILD_TYPE=<value> and
-# -DSystemC_CXX_STANDARD=<value>.
-set(SYSTEMC_BUILD_TYPE ${CMAKE_BUILD_TYPE})
-set(SystemC_CXX_STANDARD ${CMAKE_CXX_STANDARD} CACHE STRING "SystemC C++ standard")
-FetchContent_MakeAvailable(systemc)
+
+add_library(systemc SHARED IMPORTED)
+add_dependencies(systemc systemc_ext)
+
+if(APPLE)
+  set(SYSTEMC_LIB ${SYSTEMC_PREFIX}/lib/libsystemc.dylib)
+elseif(WIN32)
+  set(SYSTEMC_LIB ${SYSTEMC_PREFIX}/lib/systemc.lib)
+else()
+  set(SYSTEMC_LIB ${SYSTEMC_PREFIX}/lib/libsystemc.so)
+endif()
+
+set_target_properties(systemc PROPERTIES
+  IMPORTED_LOCATION ${SYSTEMC_LIB}
+  INTERFACE_INCLUDE_DIRECTORIES ${SYSTEMC_PREFIX}/include
+)
+
+# PySysC (vendored from fork with Python 3.9+ fix)
+FetchContent_Declare(
+  pysysc_src
+  GIT_REPOSITORY https://github.com/cphurley82/PySysC.git
+  GIT_TAG fix-pyeval-init
+)
+FetchContent_GetProperties(pysysc_src)
+if(NOT pysysc_src_POPULATED)
+  FetchContent_Populate(pysysc_src)
+endif()
+set(PYSYSC_SOURCE_DIR ${pysysc_src_SOURCE_DIR})
+
+if(TOYSSD_BUILD_PYTHON)
+  set(_pysysc_module ${PYSYSC_SOURCE_DIR}/PyScModule.cpp)
+  if(EXISTS ${_pysysc_module})
+    file(READ ${_pysysc_module} _pysysc_contents)
+    string(REPLACE "#if PY_VERSION_HEX < 0x03090000\n    if (!PyEval_ThreadsInitialized())\n        PyEval_InitThreads();\n#else\n    PyEval_InitThreads();\n#endif\n"
+                   "#if PY_VERSION_HEX < 0x03090000\n    if (!PyEval_ThreadsInitialized())\n        PyEval_InitThreads();\n#endif\n"
+                   _pysysc_patched "${_pysysc_contents}")
+    if(NOT "${_pysysc_contents}" STREQUAL "${_pysysc_patched}")
+      file(WRITE ${_pysysc_module} "${_pysysc_patched}")
+    endif()
+  endif()
+endif()
+
+if(TOYSSD_BUILD_PYTHON)
+  find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
+
+  Python3_add_library(pysyscsc MODULE
+    ${PYSYSC_SOURCE_DIR}/PyScModule.cpp
+  )
+  target_compile_features(pysyscsc PRIVATE cxx_std_17)
+  target_include_directories(pysyscsc PRIVATE ${PYSYSC_SOURCE_DIR})
+  target_compile_definitions(pysyscsc PRIVATE MAJOR_VERSION=1 MINOR_VERSION=0)
+  target_link_libraries(pysyscsc PRIVATE Python3::Module systemc)
+  add_dependencies(pysyscsc systemc_ext)
+  if(APPLE)
+    set(_pysysc_rpath "@loader_path;@loader_path/../_vendor/systemc/lib")
+  else()
+    set(_pysysc_rpath "$ORIGIN;$ORIGIN/../_vendor/systemc/lib")
+  endif()
+  set_target_properties(pysyscsc PROPERTIES
+    OUTPUT_NAME "pysyscsc"
+    PREFIX ""
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/python"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/python"
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/python"
+    INSTALL_RPATH "${_pysysc_rpath}"
+    BUILD_RPATH "${_pysysc_rpath}"
+  )
+  toyssd_apply_werror(pysyscsc)
+  toyssd_apply_clang_tidy(pysyscsc)
+endif()
 
 ############################
 # Subprojects / Targets    #
@@ -399,7 +477,10 @@ toyssd_apply_clang_tidy(ssdsim)
 # Useful with LD_PRELOAD on Linux to intercept/override sc_main resolution.
 add_library(scmain_stub SHARED api/sc_main_stub.cpp)
 target_compile_features(scmain_stub PUBLIC cxx_std_20)
-set_target_properties(scmain_stub PROPERTIES OUTPUT_NAME scmain_stub)
+set_target_properties(scmain_stub PROPERTIES 
+  OUTPUT_NAME scmain_stub
+  EXPORT_NAME scmain_stub
+)
 add_dependencies(scmain_stub format)
 toyssd_apply_werror(scmain_stub)
 toyssd_apply_clang_tidy(scmain_stub)
@@ -609,10 +690,16 @@ include(CMakePackageConfigHelpers)
 # Downstream consumers can `find_package(toyssd CONFIG)` and link to targets
 # exported below. We install the public C API header under include/toyssd/.
 install(FILES api/ssdsim_api.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/toyssd)
+install(FILES api/ssdsim_api.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/api)
 
 # Install library and export targets
 # Install shared libraries and export targets (toyssd::ssdsim, toyssd::simlib)
-install(TARGETS ssdsim simlib
+set(_toyssd_export_targets ssdsim simlib scmain_stub)
+if(TOYSSD_BUILD_PYTHON AND TARGET toyssd_pycore)
+  list(APPEND _toyssd_export_targets toyssd_pycore)
+endif()
+
+install(TARGETS ${_toyssd_export_targets}
         EXPORT toyssdTargets
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -654,3 +741,48 @@ install(EXPORT toyssdTargets
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/sim/
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/toyssd/sim
   FILES_MATCHING PATTERN "*.h")
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/sim/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/sim
+  FILES_MATCHING PATTERN "*.h")
+
+if(TOYSSD_BUILD_PYTHON)
+  install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/python/toyssd/
+    DESTINATION toyssd
+    FILES_MATCHING
+      PATTERN "*.py"
+      PATTERN "py.typed"
+  )
+  if(TARGET toyssd_pycore)
+    install(TARGETS toyssd_pycore scmain_stub simlib
+      LIBRARY DESTINATION toyssd/_native
+      RUNTIME DESTINATION toyssd/_native
+      ARCHIVE DESTINATION toyssd/_native
+    )
+  endif()
+  if(TARGET pysyscsc)
+    install(TARGETS pysyscsc
+      LIBRARY DESTINATION toyssd/_vendor
+      RUNTIME DESTINATION toyssd/_vendor
+      ARCHIVE DESTINATION toyssd/_vendor
+    )
+    install(DIRECTORY ${PYSYSC_SOURCE_DIR}/pysysc/
+      DESTINATION toyssd/_vendor/pysysc
+      FILES_MATCHING PATTERN "*.py"
+    )
+    if(EXISTS ${PYSYSC_SOURCE_DIR}/LICENSE)
+      install(FILES ${PYSYSC_SOURCE_DIR}/LICENSE
+        DESTINATION toyssd/_vendor/pysysc
+        RENAME LICENSE.PySysC
+      )
+    endif()
+  endif()
+  install(DIRECTORY ${SYSTEMC_PREFIX}/include/
+    DESTINATION toyssd/_vendor/systemc/include
+  )
+  install(DIRECTORY ${SYSTEMC_PREFIX}/lib/
+    DESTINATION toyssd/_vendor/systemc/lib
+    FILES_MATCHING
+      PATTERN "libsystemc*${CMAKE_SHARED_LIBRARY_SUFFIX}*"
+      PATTERN "systemc.lib"
+  )
+endif()

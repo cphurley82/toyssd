@@ -233,6 +233,12 @@ def py_typecheck(c):
     c.run("uv run mypy", pty=True)
 
 
+@task
+def py_test(c, backend=None):
+    backend = get_backend(c, backend)
+    run_cmd(c, "uv run pytest", backend)
+
+
 @task(pre=[cpp_format_check, cpp_lint, py_lint, py_typecheck])
 def check(c):
     """Run static checks (no build/tests)."""
@@ -253,6 +259,7 @@ def verify(c, build_type: str = "Debug", backend: str | None = None):
     # Build and test
     cpp_build(c, build_type=build_type, backend=backend)
     cpp_test(c, build_type=build_type, backend=backend)
+    py_test(c, backend=backend)
 
 @task
 def docker_cpp_configure(c, build_type="Debug", werror=True):

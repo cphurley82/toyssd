@@ -106,3 +106,18 @@ void NandModel::b_transport(NandCmd& cmd, sc_core::sc_time& /*delay*/) {
     }
   }
 }
+
+std::vector<NandModel::Event> NandModel::drain_events() {
+  std::vector<Event> out;
+  out.swap(events_);
+  return out;
+}
+
+void NandModel::record_event(const NandCmd& cmd,
+                             const sc_core::sc_time& delay) {
+  events_.push_back(Event{
+      .op = cmd.op,
+      .addr = cmd.addr,
+      .time_ps = (sc_core::sc_time_stamp() + delay).value(),
+  });
+}

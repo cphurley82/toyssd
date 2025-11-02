@@ -19,6 +19,7 @@ struct Top : sc_core::sc_module {
     fw.out.bind(host.from_fw);
     // Connect NAND interface to model
     nand_if.socket.bind(nand.socket);
+    nand_if.attach(&nand);
     fw.set_nand(&nand_if);
   }
 };

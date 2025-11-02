@@ -169,22 +169,28 @@ Tooling PATH notes (macOS + VS Code)
 
 - Alternatively, pass `-DCLANG_TIDY_EXE=$(brew --prefix llvm)/bin/clang-tidy` when configuring to bypass PATH.
 
-### CLI helper (optional)
+### Python API
 
-A small CLI is provided under the `toyssd` package (installed in editable mode for development). Install the project and use the CLI:
+The Python package exposes a `ToySSD` façade that instantiates the full SystemC top module (host interface, firmware, and NAND). Build the project once via CMake (or `uv run invoke verify`), then interact from Python:
 
 ```bash
-# Install the local package in editable mode
-uv pip install -e .
+uv pip install -e .  # editable install for development
 
-# Generate a config
-uv run toyssd gen-config --out config/generated.json
+uv run python - <<'PY'
+from toyssd import ToySSD
 
-# Run the bundled fio demo via CTest (requires a configured build dir)
-uv run toyssd run-fio-demo --build-dir build-debug
+sim = ToySSD()
+req_id = sim.submit_write(0, 4096)
+completions = []
+while not completions:
+    completions.extend(sim.poll(4))
+
+for event in sim.drain_nand_events():
+    print(event)
+PY
 ```
 
-Optional plotting/analysis commands require the `viz` extras (pandas/matplotlib). Install with:
+Optional visualization helpers (pandas/matplotlib) remain under the `viz` extra:
 
 ```bash
 uv sync --extra viz

@@ -88,6 +88,12 @@ struct NandModel : sc_core::sc_module {
   // TLM-2.0 target socket for standard transactions
   tlm_utils::simple_target_socket<NandModel> socket;
 
+  struct Event {
+    NandCmd::Op op;
+    NandCmd::Address addr;
+    uint64_t time_ps{0};
+  };
+
   SC_CTOR(NandModel) {
     socket.register_b_transport(this, &NandModel::b_transport);
   }
@@ -98,6 +104,10 @@ struct NandModel : sc_core::sc_module {
   // Overload for custom payload shortcut (not standard TLM; placeholder)
   void b_transport(NandCmd& cmd, sc_core::sc_time& delay);
 
+  void record_event(const NandCmd& cmd, const sc_core::sc_time& delay);
+
+  std::vector<Event> drain_events();
+
  private:
   struct PageStore {
     std::vector<uint8_t> data;
@@ -106,4 +116,5 @@ struct NandModel : sc_core::sc_module {
   // Keyed by a composite string of the full address
   // (channel/ce/lun/plane/block/wordline/logical_page)
   std::unordered_map<std::string, PageStore> pages_;
+  std::vector<Event> events_;
 };
