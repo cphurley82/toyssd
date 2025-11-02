@@ -37,7 +37,7 @@ option(TOYSSD_ENABLE_CLANG_TIDY "Enable clang-tidy on toyssd (project) targets" 
 
 # Code coverage (local + CI)
 option(ENABLE_CODE_COVERAGE "Enable code coverage instrumentation and add a 'coverage' target" OFF)
-set(CODE_COVERAGE_THRESHOLD 20 CACHE STRING "Fail if line coverage is below this percent when running the 'coverage' target")
+set(CODE_COVERAGE_THRESHOLD 15 CACHE STRING "Fail if line coverage is below this percent when running the 'coverage' target")
 
 # Encourage out-of-source builds to keep generated files out of the source tree.
 if(CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)

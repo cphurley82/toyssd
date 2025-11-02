@@ -22,5 +22,3 @@ def test_toyssd_basic_write_flow() -> None:
 
     events = sim.drain_nand_events()
     assert any(e.op == "PROGRAM" for e in events)
-
-

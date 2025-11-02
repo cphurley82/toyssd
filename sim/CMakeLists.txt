@@ -2,6 +2,7 @@
 # This shared library contains most of the simulator implementation and is
 # linked by the public-facing 'ssdsim' library and unit tests.
 add_library(simlib SHARED
+  Config.cpp
   host/HostInterface.cpp
   fw/Firmware.cpp fw/FTL.cpp
   nand/NandInterfaceImpl.cpp nand/NandModel.cpp

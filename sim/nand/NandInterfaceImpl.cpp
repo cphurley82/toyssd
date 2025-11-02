@@ -1,11 +1,19 @@
 // Copyright Chris Hurley
 #include "sim/nand/NandInterfaceImpl.h"
 
+#include "sim/Config.h"
 #include "sim/fw/FTL.h"  // for PhysicalPage definition
 
 void NandInterfaceImpl::attach(NandModel* model) { model_ = model; }
 
 namespace {
+inline sc_core::sc_time make_delay(double micros) {
+  if (micros <= 0.0) {
+    return sc_core::SC_ZERO_TIME;
+  }
+  return sc_core::sc_time(micros, sc_core::SC_US);
+}
+
 inline NandModel* resolve_model(
     NandModel* attached,
     tlm_utils::simple_initiator_socket<NandInterfaceImpl>& socket) {
@@ -30,7 +38,8 @@ sc_core::sc_time NandInterfaceImpl::read(const PhysicalPage& page,
   cmd.addr.lun = 0;
   cmd.addr.plane = 0;
   cmd.data = std::nullopt;  // Data is optional
-  sc_core::sc_time delay = sc_core::SC_ZERO_TIME;
+  const auto& cfg = get_simulator_config();
+  sc_core::sc_time delay = make_delay(cfg.nand_t_read_us);
   auto* tgt = resolve_model(model_, socket);
   if (tgt != nullptr) {
     tgt->b_transport(cmd, delay);
@@ -50,7 +59,8 @@ sc_core::sc_time NandInterfaceImpl::program(const PhysicalPage& page,
   cmd.addr.lun = 0;
   cmd.addr.plane = 0;
   cmd.data = std::nullopt;  // Optional by design
-  sc_core::sc_time delay = sc_core::SC_ZERO_TIME;
+  const auto& cfg = get_simulator_config();
+  sc_core::sc_time delay = make_delay(cfg.nand_t_prog_us);
   auto* tgt = resolve_model(model_, socket);
   if (tgt != nullptr) {
     tgt->b_transport(cmd, delay);
@@ -69,7 +79,8 @@ sc_core::sc_time NandInterfaceImpl::erase(uint32_t die, uint32_t block) {
   cmd.addr.lun = 0;
   cmd.addr.plane = 0;
   cmd.data = std::nullopt;
-  sc_core::sc_time delay = sc_core::SC_ZERO_TIME;
+  const auto& cfg = get_simulator_config();
+  sc_core::sc_time delay = make_delay(cfg.nand_t_erase_us);
   auto* tgt = resolve_model(model_, socket);
   if (tgt != nullptr) {
     tgt->b_transport(cmd, delay);

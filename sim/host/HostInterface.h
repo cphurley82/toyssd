@@ -21,11 +21,12 @@ struct Completion {
   void* user_tag;
   int status;
   sc_core::sc_time complete_ts;
+  sc_core::sc_time latency{sc_core::SC_ZERO_TIME};
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Completion& c) {
   return os << "Completion{" << c.user_tag << ", status=" << c.status
-            << ", t=" << c.complete_ts << "}";
+            << ", t=" << c.complete_ts << ", latency=" << c.latency << "}";
 }
 
 struct HostInterface : sc_core::sc_module {

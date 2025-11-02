@@ -2,6 +2,7 @@
 #pragma once
 #include <memory>
 
+#include "sim/Config.h"
 #include "sim/fw/FTL.h"
 #include "sim/host/HostInterface.h"
 #include "sim/nand/NandInterface.h"
@@ -14,10 +15,15 @@ struct Firmware : sc_core::sc_module {
   INandInterface* nand_if{nullptr};
   FTL ftl;
 
-  SC_CTOR(Firmware) : ftl(1024, 256) { SC_THREAD(run); }
+  SC_CTOR(Firmware)
+      : ftl(get_simulator_config().nand_blocks_per_die,
+            get_simulator_config().nand_pages_per_block) {
+    SC_THREAD(run);
+  }
   void set_nand(INandInterface* n) { nand_if = n; }
   void run();
   sc_core::sc_time ctrl_overhead() const {
-    return sc_core::sc_time(5, sc_core::SC_US);
+    const auto& cfg = get_simulator_config();
+    return sc_core::sc_time(cfg.controller_overhead_us, sc_core::SC_US);
   }
 };

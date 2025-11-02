@@ -1,28 +1,51 @@
-import argparse, subprocess, os, sys
+import argparse
+import subprocess
+import sys
+from pathlib import Path
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--config", default="config/default.json")
-parser.add_argument("--runtime", type=int, default=5)
-args = parser.parse_args()
 
-build_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "build"))
-fio = os.path.abspath(os.path.join(build_dir, "_deps", "fio-src", "fio"))
-ioengine = os.path.abspath(os.path.join(build_dir, "libssdsim.so"))
-config = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", args.config))
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run fio against the toyssd engine.")
+    parser.add_argument(
+        "--config",
+        default="config/default.json",
+        help="Path to simulator JSON configuration.",
+    )
+    parser.add_argument(
+        "--runtime",
+        type=int,
+        default=5,
+        help="Runtime for the fio workload (seconds).",
+    )
+    return parser.parse_args()
 
-cmd = [
-    fio,
-    f"--ioengine={ioengine}",
-    f"--filename={config}",
-    "--name=demo",
-    "--rw=randwrite",
-    "--size=64M",
-    "--bs=4k",
-    "--iodepth=8",
-    "--numjobs=1",
-    "--time_based",
-    f"--runtime={args.runtime}"
-]
 
-print("[INFO] Running:", " ".join(cmd))
-sys.exit(subprocess.call(cmd))
+def main() -> int:
+    args = _parse_args()
+    repo_root = Path(__file__).resolve().parents[1]
+    build_dir = repo_root / "build"
+    fio = build_dir / "_deps" / "fio-src" / "fio"
+    ioengine_name = "libssdsim.dylib" if sys.platform == "darwin" else "libssdsim.so"
+    ioengine = build_dir / ioengine_name
+    config = (repo_root / args.config).resolve()
+
+    cmd = [
+        str(fio),
+        f"--ioengine=external:{ioengine}",
+        f"--filename={config}",
+        "--name=demo",
+        "--rw=randwrite",
+        "--size=64M",
+        "--bs=4k",
+        "--iodepth=8",
+        "--numjobs=1",
+        "--time_based",
+        f"--runtime={args.runtime}",
+    ]
+
+    print("[INFO] Running:", " ".join(cmd))
+    return subprocess.call(cmd)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -22,10 +22,13 @@ void Firmware::run() {
     }
 
     wait(delay + ctrl_overhead());
+    const auto completion_time = sc_core::sc_time_stamp();
+    const auto latency = completion_time - req->submit_ts;
     out.write(Completion{
         .user_tag = req->user_tag,
         .status = 0,
-        .complete_ts = sc_core::sc_time_stamp(),
+        .complete_ts = completion_time,
+        .latency = latency,
     });
     delete req;
   }

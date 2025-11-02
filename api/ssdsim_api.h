@@ -17,7 +17,7 @@ typedef struct {
 typedef struct {
   void* user_tag;
   int status;
-  uint64_t ns;
+  uint64_t ns;  // Completion latency in nanoseconds.
 } ssd_cpl_t;
 
 int ssdsim_init(const char* config_path);

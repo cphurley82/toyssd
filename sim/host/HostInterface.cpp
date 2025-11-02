@@ -1,8 +1,10 @@
 // Copyright Chris Hurley
 #include "host/HostInterface.h"
 
+#include <cmath>
 #include <cstring>
 #include <memory>
+#include <mutex>
 
 #include "../Top.h"
 #include "../fw/Firmware.h"
@@ -29,9 +31,12 @@ int HostInterface::poll(int max_completions, ssd_cpl_t* out) {
   while (produced < max_completions && from_fw.nb_read(cpl)) {
     out[produced].user_tag = cpl.user_tag;
     out[produced].status = cpl.status;
-    // raw ticks
-    out[produced].ns =
-        (cpl.complete_ts.value() - sc_core::SC_ZERO_TIME.value());
+    constexpr double kNsPerSec = 1'000'000'000.0;
+    double latency_ns = cpl.latency.to_seconds() * kNsPerSec;
+    if (latency_ns < 0.0) {
+      latency_ns = 0.0;
+    }
+    out[produced].ns = static_cast<uint64_t>(std::llround(latency_ns));
     ++produced;
   }
   return produced;
@@ -40,8 +45,10 @@ int HostInterface::poll(int max_completions, ssd_cpl_t* out) {
 // --------------- C API adapters ---------------
 namespace ssdsim_internal {
 static std::unique_ptr<sc_core::sc_simcontext> simctx;
+static std::mutex sim_mutex;
 
 int init_cxx(const char* /*cfg*/) {
+  std::lock_guard<std::mutex> lock(sim_mutex);
   if (g_host != nullptr) {
     return 0;
   }
@@ -57,6 +64,7 @@ int init_cxx(const char* /*cfg*/) {
 
 int submit_cxx(void* user_tag, uint64_t lba, uint32_t size_bytes, bool is_write,
                void* buf) {
+  std::lock_guard<std::mutex> lock(sim_mutex);
   if (g_host == nullptr) {
     return 1;
   }
@@ -72,6 +80,7 @@ int submit_cxx(void* user_tag, uint64_t lba, uint32_t size_bytes, bool is_write,
 }
 
 int poll_cxx(int max_cpls, ssd_cpl_t* out_cpls) {
+  std::lock_guard<std::mutex> lock(sim_mutex);
   if (g_host == nullptr) {
     return 0;
   }
@@ -94,6 +103,7 @@ int poll_cxx(int max_cpls, ssd_cpl_t* out_cpls) {
 }
 
 void shutdown_cxx() {
+  std::lock_guard<std::mutex> lock(sim_mutex);
   simctx = nullptr;
   g_host = nullptr;
 }

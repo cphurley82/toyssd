@@ -29,7 +29,7 @@ date: 2025-10-16
 - Build system stabilized with CMake (C++20), SystemC/TLM, and GoogleTest.
 - Docker image provides reproducible builds and test runs; CI (GitHub Actions) runs unit tests plus a CTest demo labeled `demo`. Developers can run the demo manually from the CLI using `fio` and the provided ioengine.
 - fio external ioengine (`ssdsim_engine`) is wired to `libssdsim` and produces completions against a stubbed SystemC pipeline.
-- A CMake demo target is available: `run_fio_demo` (also aliased as `demo`) which runs fio with the external engine and a sample config.
+- A CTest demo named `FioDemo` runs fio with the external engine and a sample config; invoke it via `ctest -R FioDemo`.
 - Progress through Phases 0–1: ioengine stub + HostInterface/Firmware scaffold with fixed-latency completions. NAND/FTL work is upcoming.
 
 
