@@ -79,19 +79,12 @@ jobs:
       - name: Build coverage and generate report
         if: runner.os == 'Linux'
         run: |
-          docker run --rm -t -v "$PWD":/src -w /src toyssd bash -lc '
-            set -euo pipefail
-            cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug -DENABLE_CODE_COVERAGE=ON && \
-            cmake --build build-coverage -j && \
-            cmake --build build-coverage --target coverage
-          '
+          docker run --rm -t -v "$PWD":/src -w /src toyssd \
+            uv run invoke coverage
 
       - name: Build coverage and generate report
         if: runner.os == 'macOS'
-        run: |
-          cmake -S . -B build-coverage -DCMAKE_BUILD_TYPE=Debug -DENABLE_CODE_COVERAGE=ON
-          cmake --build build-coverage -j
-          cmake --build build-coverage --target coverage
+        run: uv run invoke coverage
 
       # ---------------------- Dependency snapshots ----------------------
       - name: Capture dependency snapshots (uv lock + versions)

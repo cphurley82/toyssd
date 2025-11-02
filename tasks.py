@@ -6,6 +6,7 @@ from invoke import task
 
 # ----------------------- helpers -----------------------
 
+
 def build_dir_for(backend: str, build_type: str) -> str:
     if backend == "docker":
         return "build-docker-debug" if build_type == "Debug" else "build-docker-release"
@@ -36,6 +37,7 @@ def run_cmd(c, cmd: str, backend: str, image: str = "toyssd"):
 
 
 # ----------------------- env/tasks -----------------------
+
 
 @task
 def env_check(c):
@@ -94,25 +96,36 @@ def env_check(c):
     if ct_ok:
         ok(ct_ver.splitlines()[0])
     else:
-        warn("clang-tidy not found (optional). Enable via Homebrew or your toolchain; Invoke cpp_analyze will skip if unavailable.")
+        warn(
+            "clang-tidy not found (optional). Enable via Homebrew or your toolchain; Invoke cpp_analyze will skip if unavailable."
+        )
         missing_optional.append("clang-tidy")
 
     # Optional: cpplint — prefer venv module (for CTest), then CLI as fallback for version reporting
-    cpplint_present, _ = run_silent("uv run python -c 'import importlib.util,sys; sys.exit(0 if importlib.util.find_spec(\"cpplint\") else 1)'")
+    cpplint_present, _ = run_silent(
+        "uv run python -c 'import importlib.util,sys; sys.exit(0 if importlib.util.find_spec(\"cpplint\") else 1)'"
+    )
     if cpplint_present:
         # Try importlib.metadata for the distribution version; fallback to module __version__; as last resort, CLI
-        meta_ok, meta_out = run_silent("uv run python -c 'import importlib.metadata as m; print(m.version(\"cpplint\"))'")
+        meta_ok, meta_out = run_silent(
+            "uv run python -c 'import importlib.metadata as m; print(m.version(\"cpplint\"))'"
+        )
         if meta_ok and meta_out:
             ok(f"cpplint {meta_out.strip()} (uv venv)")
         else:
             # Fallback to module attribute
-            mod_ok, mod_out = run_silent("uv run python -c 'import cpplint; print(getattr(cpplint,\"__version__\",\"unknown\"))'")
-            ver = (mod_out.strip() if mod_ok and mod_out else "unknown")
+            mod_ok, mod_out = run_silent(
+                'uv run python -c \'import cpplint; print(getattr(cpplint,"__version__","unknown"))\''
+            )
+            ver = mod_out.strip() if mod_ok and mod_out else "unknown"
             if ver == "unknown":
                 # Fallback to CLI in venv to extract version line if possible
                 cli_ok, cli_out = run_silent("uv run cpplint --version")
                 if cli_ok and cli_out:
-                    ver_line = next((ln for ln in cli_out.splitlines() if ln.lower().startswith("cpplint ")), None)
+                    ver_line = next(
+                        (ln for ln in cli_out.splitlines() if ln.lower().startswith("cpplint ")),
+                        None,
+                    )
                     if ver_line:
                         ver = ver_line.strip().split(" ", 1)[-1]
             ok(f"cpplint {ver} (uv venv)")
@@ -120,12 +133,16 @@ def env_check(c):
         # Not importable in venv — see if a system CLI exists
         cli_ok, cli_out = run_silent("cpplint --version")
         if cli_ok and cli_out:
-            ver_line = next((ln for ln in cli_out.splitlines() if ln.lower().startswith("cpplint ")), None)
+            ver_line = next(
+                (ln for ln in cli_out.splitlines() if ln.lower().startswith("cpplint ")), None
+            )
             if ver_line:
                 ok(f"cpplint {ver_line.strip().split(' ', 1)[-1]} (system CLI)")
             else:
                 ok("cpplint (system CLI) present")
-            warn("cpplint not installed in uv venv — CTest cpplint may be skipped. Run: uv sync --all-extras")
+            warn(
+                "cpplint not installed in uv venv — CTest cpplint may be skipped. Run: uv sync --all-extras"
+            )
         else:
             warn("cpplint not found (optional). Run: uv sync --all-extras")
         missing_optional.append("cpplint")
@@ -135,7 +152,9 @@ def env_check(c):
         fail(f"Environment check: FAIL — missing required tools: {', '.join(missing_required)}")
     else:
         if missing_optional:
-            warn(f"Environment check: PASS (required OK) — missing optional: {', '.join(missing_optional)}")
+            warn(
+                f"Environment check: PASS (required OK) — missing optional: {', '.join(missing_optional)}"
+            )
         else:
             ok("Environment check: PASS — all tools present")
 
@@ -203,6 +222,20 @@ def cpp_analyze(c, build_type="Debug", backend=None):
 
 
 @task
+def cpp_coverage(c, backend=None, threshold: int | None = None):
+    """Generate C++ coverage reports via gcovr."""
+    backend = get_backend(c, backend)
+    bdir = "build-coverage"
+    threshold_flag = f"-DCODE_COVERAGE_THRESHOLD={threshold}" if threshold is not None else ""
+    configure_cmd = f"cmake -S . -B {bdir} -DCMAKE_BUILD_TYPE=Debug -DENABLE_CODE_COVERAGE=ON"
+    if threshold_flag:
+        configure_cmd += f" {threshold_flag}"
+    run_cmd(c, configure_cmd, backend)
+    run_cmd(c, f"cmake --build {bdir} -j", backend)
+    run_cmd(c, f"cmake --build {bdir} --target coverage", backend)
+
+
+@task
 def py_format(c):
     # Discover Python files (tracked or untracked)
     list_cmd = "find python tests -type f -name '*.py' 2>/dev/null"
@@ -260,6 +293,13 @@ def verify(c, build_type: str = "Debug", backend: str | None = None):
     cpp_build(c, build_type=build_type, backend=backend)
     cpp_test(c, build_type=build_type, backend=backend)
     py_test(c, backend=backend)
+
+
+@task
+def coverage(c, backend: str | None = None, threshold: int | None = None):
+    """Run the coverage pipeline (configure, build, gcovr report)."""
+    cpp_coverage(c, backend=backend, threshold=threshold)
+
 
 @task
 def docker_cpp_configure(c, build_type="Debug", werror=True):
