@@ -1,4 +1,6 @@
 # nand_tests — GoogleTest-based unit tests for the NAND subsystem
+# WHY: Keep NAND-focused tests close to implementation to simplify includes
+#   and enable running just this suite via ctest -R.
 add_executable(nand_tests
   nand_test.cc
   ${CMAKE_SOURCE_DIR}/tests/test_main.cc  # Provide sc_main that runs GoogleTest
@@ -12,14 +14,23 @@ target_include_directories(nand_tests PRIVATE ${CMAKE_SOURCE_DIR})
 
 # Link the core simulator, SystemC, and GoogleTest main
 target_link_libraries(nand_tests PRIVATE simlib systemc gtest_main)
+# Ensure SystemC is available before compiling tests that include <systemc>.
+add_dependencies(nand_tests systemc_ext)
+
+# Standardize test binary output to bin/ to simplify RPATH
+set_target_properties(nand_tests PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
+)
 
 if(APPLE)
-  set(_nand_tests_rpath "@loader_path/../../../_vendor/systemc/lib;@loader_path/../../../lib;@loader_path/../../lib")
+  # With standardized output dirs, tests live in bin/ and libs in ../lib
+  set(_nand_tests_rpath "@loader_path/../lib")
 else()
-  set(_nand_tests_rpath "$ORIGIN/../../../_vendor/systemc/lib;$ORIGIN/../../../lib;$ORIGIN/../../lib")
+  set(_nand_tests_rpath "$ORIGIN/../lib")
 endif()
 list(APPEND _nand_tests_rpath "${SYSTEMC_PREFIX}/lib")
 set_target_properties(nand_tests PROPERTIES BUILD_RPATH "${_nand_tests_rpath}")
+# WHY: Keep build-tree lookup simple: local lib dir and absolute SystemC path.
 
 include(GoogleTest)
 

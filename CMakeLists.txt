@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.28) # Ubuntu 24.04 LTS provides CMake 3.28.
 
+# FetchContent policy note:
+# WHY: This project uses the legacy single-argument
+#   FetchContent_Populate(<name>) form for a non-CMake dependency (PySysC)
+#   to only fetch sources without add_subdirectory(). CMake 3.30 makes that
+#   form a fatal error unless CMP0169 is set to OLD. We opt into OLD behavior
+#   to preserve this workflow without forcing a full subproject add.
 if(POLICY CMP0169)
   cmake_policy(SET CMP0169 OLD)
 endif()
@@ -65,6 +71,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE BOOL "Generate compile_commands.json"
 
 # If coverage is enabled, set appropriate compile/link flags early so all
 # targets inherit instrumentation.
+# WHY: Instrumentation must be present on every object for gcovr/llvm-cov
+#   to produce accurate, consistent reports and thresholds in CI.
 if(ENABLE_CODE_COVERAGE)
   message(STATUS "Code coverage instrumentation is ENABLED")
   # Favor debug-friendly builds for accurate coverage
@@ -89,12 +97,18 @@ endif()
 ##############################
 
 # Tool for fetching external dependencies.
+# WHY: Consolidates fetch-from-source of third-party code in a reproducible
+#   way without requiring system-wide package managers for contributors.
 include(FetchContent)
 
 # Provides variables in install() calls and package config paths.
+# WHY: Use standard install destinations across platforms (lib, bin, include,
+#   etc.) instead of hard-coding paths.
 include(GNUInstallDirs)
 
 # Respects BUILD_TESTING set above.
+# WHY: Including CTest defines the standard BUILD_TESTING option and helpers
+#   like add_test(), enabling users to -DBUILD_TESTING=OFF cleanly.
 include(CTest)
 
 ########################################
@@ -130,8 +144,8 @@ function(toyssd_apply_clang_tidy tgt)
       if(_OSX_SDK_PATH)
         list(APPEND _CLANG_TIDY_CMD -extra-arg=-isysroot -extra-arg=${_OSX_SDK_PATH} -extra-arg=-stdlib=libc++)
       endif()
-    endif()
-    set_target_properties(${tgt} PROPERTIES CXX_CLANG_TIDY "${_CLANG_TIDY_CMD}")
+  endif()
+  set_target_properties(${tgt} PROPERTIES CXX_CLANG_TIDY "${_CLANG_TIDY_CMD}")
   endif()
 endfunction()
 
@@ -140,9 +154,15 @@ endfunction()
 ############################
 
 # Find clang-format executable
+# WHY: Provide local `format` and `format-check` workflows which are consistent
+#   across platforms and CI, and avoid requiring developers to remember long
+#   command lines.
 find_program(CLANG_FORMAT_EXE NAMES clang-format clang-format-18 clang-format-17)
 
 # Define the canonical list of project sources/headers once for reuse
+# Generate a stable list of files to format/check.
+# WHY: CMake scripts avoid shell quoting issues on Windows/macOS and produce
+#   readable output with the exact file list to be processed.
 file(GLOB_RECURSE TOYSSD_FORMAT_SOURCES
   CONFIGURE_DEPENDS
   ${CMAKE_SOURCE_DIR}/api/*.[ch]pp
@@ -234,6 +254,8 @@ if(BUILD_TESTING)
 
   if(Python3_Interpreter_FOUND)
     # Check if cpplint can be imported
+    # WHY: Make the cpplint CTest opt-in automatically when developers have it
+    #   available, without failing configuration when it's missing.
     execute_process(
       COMMAND ${Python3_EXECUTABLE} -c "import importlib.util,sys; sys.exit(0 if importlib.util.find_spec('cpplint') else 1)"
       RESULT_VARIABLE CPPLINT_IMPORT_RESULT
@@ -265,11 +287,13 @@ if(BUILD_TESTING)
 endif()
 
 #########################
-# clang-format (CTest)   #
+# clang-format (CTest)  #
 #########################
 
 # In addition to build targets, expose a CTest for format check so CI or wrappers
 # can run it uniformly via ctest.
+# WHY: CI systems and developers can use a single interface (ctest) for all
+#   checks, independent of generator or platform.
 if(BUILD_TESTING AND CLANG_FORMAT_EXE)
   add_test(NAME clang-format-check
            COMMAND ${CMAKE_COMMAND} -P ${_CF_CHECK_SCRIPT}
@@ -284,6 +308,8 @@ endif()
 # Provide an explicit custom target to run clang-tidy over project sources,
 # independent of whether files are rebuilt. This ensures users can always
 # invoke analysis and see diagnostics even when the build is up-to-date.
+# WHY: Running analysis on-demand avoids relying on incremental rebuilds to
+#   surface diagnostics and keeps analysis off external dependencies.
 # Scope: api/, sim/, fio_plugin/ (tests and external deps excluded).
 file(GLOB_RECURSE TOYSSD_TIDY_SOURCES
   CONFIGURE_DEPENDS
@@ -355,6 +381,8 @@ endif()
 ############################
 
 # GoogleTest (only when testing is enabled)
+# WHY: We fetch a known-good version when BUILD_TESTING=ON to avoid mutations
+#   to developer machines and to keep CI reproducible.
 if(BUILD_TESTING)
   FetchContent_Declare(
     googletest
@@ -366,6 +394,8 @@ if(BUILD_TESTING)
 endif() # 
 
 # SystemC (3.0.2) — build from source via ExternalProject
+# WHY: SystemC is not consistently available on all platforms. Building a
+#   pinned version from source yields reproducible builds for contributors and CI.
 include(ExternalProject)
 
 set(SYSTEMC_VERSION 3.0.2)
@@ -403,18 +433,22 @@ set_target_properties(systemc PROPERTIES
 )
 
 # PySysC (vendored from fork with Python 3.9+ fix)
-FetchContent_Declare(
-  pysysc_src
-  GIT_REPOSITORY https://github.com/cphurley82/PySysC.git
-  GIT_TAG fix-pyeval-init
-)
-FetchContent_GetProperties(pysysc_src)
-if(NOT pysysc_src_POPULATED)
-  FetchContent_Populate(pysysc_src)
-endif()
-set(PYSYSC_SOURCE_DIR ${pysysc_src_SOURCE_DIR})
-
+# WHY: Upstream PySysC needs a small Python 3.9+ compatibility adjustment.
+#   We fetch sources and patch in-tree so we can build the module alongside
+#   this project without requiring separate packaging. Only fetch/populate
+#   when Python bindings are enabled to avoid unnecessary network access.
 if(TOYSSD_BUILD_PYTHON)
+  FetchContent_Declare(
+    pysysc_src
+    GIT_REPOSITORY https://github.com/cphurley82/PySysC.git
+    GIT_TAG fix-pyeval-init
+  )
+  FetchContent_GetProperties(pysysc_src)
+  if(NOT pysysc_src_POPULATED)
+    FetchContent_Populate(pysysc_src)
+  endif()
+  set(PYSYSC_SOURCE_DIR ${pysysc_src_SOURCE_DIR})
+
   set(_pysysc_module ${PYSYSC_SOURCE_DIR}/PyScModule.cpp)
   if(EXISTS ${_pysysc_module})
     file(READ ${_pysysc_module} _pysysc_contents)
@@ -465,9 +499,10 @@ endif()
 add_subdirectory(sim)
 
 # Core simulator shared library
-# Provides a C API surface (api/ssdsim_api.h, api/ssdsim_api.cc) that can be
-# loaded by the fio engine. Also includes a tiny sc_main stub to satisfy
-# linkage for consumers that need it.
+# WHAT: Provides the stable C API (api/ssdsim_api.h/cc) used by the fio engine
+#   and other consumers.
+# WHY: Keep a small C-facing surface separate from the larger internal simlib,
+#   and include a tiny sc_main stub to satisfy platforms that resolve it eagerly.
 add_library(ssdsim SHARED api/ssdsim_api.cc api/sc_main_stub.cc)
 target_compile_features(ssdsim PUBLIC cxx_std_20)
 target_include_directories(ssdsim PUBLIC
@@ -477,17 +512,31 @@ target_include_directories(ssdsim PUBLIC
 )
 target_link_libraries(ssdsim PRIVATE simlib systemc)
 set_target_properties(ssdsim PROPERTIES EXPORT_NAME ssdsim)
+# Standardize output dirs (bin/lib) for easier runtime resolution
+set_target_properties(ssdsim PROPERTIES
+  LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
+  ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
+)
 add_dependencies(ssdsim format)
 toyssd_apply_werror(ssdsim)
 toyssd_apply_clang_tidy(ssdsim)
 
 # Provide a standalone sc_main stub library.
-# Useful with LD_PRELOAD on Linux to intercept/override sc_main resolution.
+# WHY: On Linux, this can be preloaded to override sc_main resolution when
+#   running binaries that would otherwise try to use the main provided by
+#   SystemC or tests (handy for demo scenarios with fio).
 add_library(scmain_stub SHARED api/sc_main_stub.cc)
 target_compile_features(scmain_stub PUBLIC cxx_std_20)
 set_target_properties(scmain_stub PROPERTIES 
   OUTPUT_NAME scmain_stub
   EXPORT_NAME scmain_stub
+)
+# Standardize output dirs (bin/lib) for easier runtime resolution
+set_target_properties(scmain_stub PROPERTIES
+  LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
+  ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
 )
 add_dependencies(scmain_stub format)
 toyssd_apply_werror(scmain_stub)
@@ -527,13 +576,21 @@ if(TOYSSD_BUILD_FIO_ENGINE)
   # Treat fio headers as system includes so warnings in dependency headers
   # do not trip -Werror on our local target.
   target_include_directories(ssdsim_engine SYSTEM PRIVATE ${FIO_INCLUDE_DIR})
+  # Standardize output dirs (place module next to other libs)
+  set_target_properties(ssdsim_engine PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
+    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
+  )
 
   # macOS-specific tweaks:
   if(APPLE)
     # Avoid conflicts with fortified headers and legacy typedefs in fio os-mac.h
     target_compile_definitions(ssdsim_engine PRIVATE CONFIG_CLOCKID_T CONFIG_STRLCAT)
 
-    # Allow undefined symbols to be resolved at runtime by the fio binary (Darwin)
+    # WHY: The external engine is dlopen()'d by the fio binary, which provides
+    #   the remaining symbols. On macOS we must explicitly allow undefined
+    #   references so the loader can resolve them at runtime.
     target_link_options(ssdsim_engine PRIVATE -Wl,-undefined,dynamic_lookup)
   endif()
 
@@ -579,6 +636,8 @@ if(TOYSSD_BUILD_FIO_ENGINE)
   endif()
 
   # Register the demo as a CTest so automation can run it via `ctest`.
+  # WHY: Keeps demos runnable in the same way as tests and avoids bespoke
+  #   shell scripts.
   if(TOYSSD_BUILD_DEMOS)
     if(APPLE)
       add_test(NAME FioDemo
@@ -678,6 +737,8 @@ if(ENABLE_CODE_COVERAGE)
   endif()
 
   # Ensure unit tests are built before attempting to run ctest from the target
+  # WHY: Provide a nice user experience: `cmake --build . --target coverage`
+  #   should build what it needs and then run, not fail due to missing targets.
   if(TARGET unit_tests)
     add_dependencies(coverage unit_tests)
   endif()
