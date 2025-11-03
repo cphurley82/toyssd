@@ -1,7 +1,7 @@
 // Copyright Chris Hurley
 #include <systemc>
 
-#include "sim/Top.h"
+#include "sim/top.h"
 
 int sc_main(int argc, char* argv[]) {
   Top top{"top"};

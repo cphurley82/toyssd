@@ -1,7 +1,7 @@
 // Copyright Chris Hurley
 #include <gtest/gtest.h>
 
-#include "sim/fw/FTL.h"
+#include "sim/fw/ftl.h"
 
 TEST(FTLTest, WriteThenReadSamePage) {
   FTL ftl(16, 64);

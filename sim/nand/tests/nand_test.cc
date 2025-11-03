@@ -8,8 +8,8 @@
 #include <vector>
 
 #include "gtest/gtest.h"  // Other library headers
-#include "sim/nand/NandCmd.h"
-#include "sim/nand/NandModel.h"
+#include "sim/nand/nand_cmd.h"
+#include "sim/nand/nand_model.h"
 #include "systemc"
 
 namespace {

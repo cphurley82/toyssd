@@ -9,9 +9,9 @@
 #include <sstream>
 #include <string>
 
-#include "sim/Config.h"
+#include "sim/config.h"
 
-// Forward-declared adapter functions implemented in HostInterface.cpp
+// Forward-declared adapter functions implemented in host_interface.cc
 namespace ssdsim_internal {
 int submit_cxx(void* user_tag, uint64_t lba, uint32_t size_bytes, bool is_write,
                void* buf);

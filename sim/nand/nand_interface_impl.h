@@ -2,9 +2,9 @@
 #pragma once
 #include <systemc>
 
-#include "sim/nand/NandInterface.h"
-#include "sim/nand/NandModel.h"
-#include "sim/util/Compat.h"
+#include "sim/nand/nand_interface.h"
+#include "sim/nand/nand_model.h"
+#include "sim/util/compat.h"
 #include "tlm_utils/simple_initiator_socket.h"
 
 struct NandInterfaceImpl : sc_core::sc_module, INandInterface {

@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "sim/util/Compat.h"
+#include "sim/util/compat.h"
 #include "systemc"
 #include "tlm"
 #include "tlm_utils/simple_target_socket.h"

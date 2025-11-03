@@ -1,12 +1,12 @@
 // Copyright Chris Hurley
-#include "sim/nand/NandModel.h"
+#include "sim/nand/nand_model.h"
 
 #include <algorithm>
 #include <cstring>
 #include <string>
 #include <vector>
 
-#include "sim/util/Constants.h"
+#include "sim/util/constants.h"
 
 namespace {
 std::string make_key(const NandCmd::Address& addr) {

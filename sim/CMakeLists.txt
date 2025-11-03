@@ -2,11 +2,11 @@
 # This shared library contains most of the simulator implementation and is
 # linked by the public-facing 'ssdsim' library and unit tests.
 add_library(simlib SHARED
-  Config.cpp
-  host/HostInterface.cpp
-  fw/Firmware.cpp fw/FTL.cpp
-  nand/NandInterfaceImpl.cpp nand/NandModel.cpp
-  Top.h
+  config.cc
+  host/host_interface.cc
+  fw/firmware.cc fw/ftl.cc
+  nand/nand_interface_impl.cc nand/nand_model.cc
+  top.h
 )
 target_compile_features(simlib PUBLIC cxx_std_20)
 add_dependencies(simlib format)
@@ -38,9 +38,7 @@ set_target_properties(simlib PROPERTIES
 # We keep sc_main out of libraries to avoid accidental multiple-definition
 # issues when tests or other binaries link against simlib. This small
 # executable is handy for ad-hoc runs of the simulator.
-add_executable(sim_main
-  main.cpp
-)
+add_executable(sim_main main.cc)
 target_compile_features(sim_main PRIVATE cxx_std_20)
 target_link_libraries(sim_main PRIVATE simlib systemc)
 set_target_properties(sim_main PROPERTIES
@@ -51,9 +49,7 @@ toyssd_apply_clang_tidy(sim_main)
 
 # Python adapter library (optional)
 if(TOYSSD_BUILD_PYTHON)
-  add_library(toyssd_pycore SHARED
-    python/ToyssdPyAdapter.cpp
-  )
+  add_library(toyssd_pycore SHARED python/toyssd_py_adapter.cc)
   target_compile_features(toyssd_pycore PUBLIC cxx_std_20)
   target_include_directories(toyssd_pycore PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>

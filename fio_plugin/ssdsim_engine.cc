@@ -49,7 +49,8 @@ struct ssdsim_state {
 };
 
 static int ssdsim_init(struct thread_data* td) {
-  struct ssdsim_state* st = calloc(1, sizeof(*st));
+  auto* st =
+      static_cast<struct ssdsim_state*>(calloc(1, sizeof(struct ssdsim_state)));
   td->io_ops_data = st;
 
   const char* override = getenv("SSD_SIM_LIB_PATH");
@@ -72,16 +73,20 @@ static int ssdsim_init(struct thread_data* td) {
   p_shutdown = (fn_shutdown_t)dlsym(st->handle, "ssdsim_shutdown");
 
   if (!p_init || !p_submit || !p_poll || !p_shutdown) {
-    fprintf(
-        stderr,
-        "ssdsim_engine: dlsym missing: init=%p submit=%p poll=%p shutdown=%p\n",
-        (void*)p_init, (void*)p_submit, (void*)p_poll, (void*)p_shutdown);
+    fprintf(stderr,
+            "ssdsim_engine: dlsym missing: init=%p submit=%p poll=%p "
+            "shutdown=%p\n",
+            reinterpret_cast<const void*>(p_init),
+            reinterpret_cast<const void*>(p_submit),
+            reinterpret_cast<const void*>(p_poll),
+            reinterpret_cast<const void*>(p_shutdown));
     return 1;
   }
 
   // Allocate an events buffer sized to iodepth
   if (td->o.iodepth < 1) td->o.iodepth = 1;
-  st->events = calloc(td->o.iodepth, sizeof(struct io_u*));
+  st->events =
+      static_cast<struct io_u**>(calloc(td->o.iodepth, sizeof(struct io_u*)));
   st->nr_events = 0;
 
   // fio >= 3.x keeps options under td->o
@@ -92,7 +97,7 @@ static int ssdsim_init(struct thread_data* td) {
 static enum fio_q_status ssdsim_queue(struct thread_data* td, struct io_u* io) {
   struct ssd_io_t req = {.user_tag = io,
                          .lba = io->offset / 512,
-                         .size_bytes = (uint32_t)io->xfer_buflen,
+                         .size_bytes = static_cast<uint32_t>(io->xfer_buflen),
                          .is_write = (io->ddir == DDIR_WRITE),
                          .buf = io->xfer_buf};
   int rc = p_submit(&req);
@@ -116,7 +121,7 @@ static int ssdsim_getevents(struct thread_data* td, unsigned int min,
   struct ssd_cpl_t comps[256];
   if (max > 256) max = 256;
 
-  int n = p_poll((int)max, comps);
+  int n = p_poll(static_cast<int>(max), comps);
   if (n < 0) n = 0;
   st->nr_events = (unsigned int)n;
   for (int i = 0; i < n; ++i) {

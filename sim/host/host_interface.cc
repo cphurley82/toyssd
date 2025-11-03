@@ -1,15 +1,15 @@
 // Copyright Chris Hurley
-#include "host/HostInterface.h"
+#include "sim/host/host_interface.h"
 
 #include <cmath>
 #include <cstring>
 #include <memory>
 #include <mutex>
 
-#include "../Top.h"
-#include "../fw/Firmware.h"
-#include "sim/util/Compat.h"
-#include "sim/util/Constants.h"
+#include "sim/fw/firmware.h"
+#include "sim/top.h"
+#include "sim/util/compat.h"
+#include "sim/util/constants.h"
 #include "systemc"
 
 // Avoid using-directives; use explicit sc_core:: qualifiers.
@@ -55,7 +55,7 @@ int init_cxx(const char* /*cfg*/) {
   }
   // Build a minimal topology similar to sc_main
   simctx = std::make_unique<sc_core::sc_simcontext>();
-  // Construct a Top in this translation unit (defined in sim/main.cpp)
+  // Construct a Top in this translation unit (defined in sim/main.cc)
   ssdsim_internal::create_top(&g_host);
   // End of elaboration and initialize delta cycles
   sc_core::sc_start(sc_core::SC_ZERO_TIME);

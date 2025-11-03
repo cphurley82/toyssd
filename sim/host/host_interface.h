@@ -6,8 +6,8 @@
 #include <vector>
 
 #include "api/ssdsim_api.h"
-#include "sim/util/Compat.h"
-#include "sim/util/Constants.h"
+#include "sim/util/compat.h"
+#include "sim/util/constants.h"
 #include "systemc"
 
 struct IORequest {

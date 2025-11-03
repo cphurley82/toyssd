@@ -1,8 +1,8 @@
 // Copyright Chris Hurley
-#include "sim/nand/NandInterfaceImpl.h"
+#include "sim/nand/nand_interface_impl.h"
 
-#include "sim/Config.h"
-#include "sim/fw/FTL.h"  // for PhysicalPage definition
+#include "sim/config.h"
+#include "sim/fw/ftl.h"  // for PhysicalPage definition
 
 void NandInterfaceImpl::attach(NandModel* model) { model_ = model; }
 

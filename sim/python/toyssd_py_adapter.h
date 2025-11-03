@@ -7,9 +7,9 @@
 #include <vector>
 
 #include "api/ssdsim_api.h"
-#include "sim/Top.h"
-#include "sim/host/HostInterface.h"
-#include "sim/nand/NandModel.h"
+#include "sim/host/host_interface.h"
+#include "sim/nand/nand_model.h"
+#include "sim/top.h"
 #include "systemc"
 
 namespace toyssd::python {

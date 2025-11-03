@@ -1,7 +1,7 @@
 # nand_tests — GoogleTest-based unit tests for the NAND subsystem
 add_executable(nand_tests
-  nand_test.cpp
-  ${CMAKE_SOURCE_DIR}/tests/test_main.cpp # Provide sc_main that runs GoogleTest
+  nand_test.cc
+  ${CMAKE_SOURCE_DIR}/tests/test_main.cc  # Provide sc_main that runs GoogleTest
 )
 target_compile_features(nand_tests PRIVATE cxx_std_20)
 toyssd_apply_werror(nand_tests)

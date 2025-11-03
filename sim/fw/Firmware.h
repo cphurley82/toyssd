@@ -2,11 +2,11 @@
 #pragma once
 #include <memory>
 
-#include "sim/Config.h"
-#include "sim/fw/FTL.h"
-#include "sim/host/HostInterface.h"
-#include "sim/nand/NandInterface.h"
-#include "sim/util/Compat.h"
+#include "sim/config.h"
+#include "sim/fw/ftl.h"
+#include "sim/host/host_interface.h"
+#include "sim/nand/nand_interface.h"
+#include "sim/util/compat.h"
 #include "systemc"
 
 struct Firmware : sc_core::sc_module {

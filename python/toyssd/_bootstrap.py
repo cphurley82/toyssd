@@ -216,7 +216,7 @@ _load_with_ctypes("scmain_stub")
 _load_library("scmain_stub")
 _load_library("toyssd_pycore")
 
-cppyy.include("toyssd/sim/python/ToyssdPyAdapter.h")
+cppyy.include("toyssd/sim/python/toyssd_py_adapter.h")
 
 gbl = cppyy.gbl
 

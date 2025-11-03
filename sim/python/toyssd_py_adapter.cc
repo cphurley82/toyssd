@@ -1,6 +1,6 @@
 // Copyright 2025 Chris Hurley
 
-#include "sim/python/ToyssdPyAdapter.h"
+#include "sim/python/toyssd_py_adapter.h"
 
 #include <algorithm>
 #include <memory>

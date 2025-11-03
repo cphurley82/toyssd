@@ -1,4 +1,4 @@
 // Copyright Chris Hurley
-#include "sim/fw/FTL.h"
+#include "sim/fw/ftl.h"
 
 #include <unordered_map>

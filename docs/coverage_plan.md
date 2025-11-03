@@ -22,11 +22,11 @@ Coverage tooling:
 - [ ] FTL: space pressure and failure/GC behavior; reads of never-written LBAs
 - [ ] HostInterface: dispatch happy-path + invalid-request tests
 - [ ] C API: init/teardown, minimal write+read loop, invalid config paths
-- [ ] Decide on `sim/util/Logger.h` (remove vs. adopt and use under NDEBUG guards)
+- [ ] Decide on `sim/util/logger.h` (remove vs. adopt and use under NDEBUG guards)
 - [ ] README: clarify coverage example (default threshold currently 20%)
 - [ ] CI: consider enabling `-Wunused-*` and `-Wunreachable-code`; add clang-tidy pass
 - [ ] Plan to ratchet coverage threshold to 40% once the above land and pass in CI
-- [ ] Split oversized tests if needed (e.g., create `tests/test_ftl_advanced.cpp`)
+- [ ] Split oversized tests if needed (e.g., create `tests/test_ftl_advanced.cc`)
 - [ ] Add targeted death tests for hard contracts (preconditions/invariants)
 
 ## Scope and principles
@@ -83,7 +83,7 @@ High-value tests:
 
 Tooling:
 
-- Use `unit_tests` binary; add a new `test_ftl_advanced.cpp` if the existing `test_ftl.cpp` grows too large.
+- Use `unit_tests` binary; add a new `test_ftl_advanced.cc` if the existing `test_ftl.cc` grows too large.
 
 ### Host interface (sim/host)
 
@@ -122,7 +122,7 @@ Tooling:
 ## Exclusions and special cases
 
 - External deps (`_deps/`), generated build trees (`build*/`), and test sources are excluded from coverage by default.
-- `sc_main_stub.cpp` intentionally appears in two targets:
+- `sc_main_stub.cc` intentionally appears in two targets:
   - As part of `ssdsim` to satisfy dynamic loading in contexts expecting an `sc_main` symbol.
   - As a separate `scmain_stub` library for Linux `LD_PRELOAD`-style use with fio.
   This duplication is intentional and not a dead-code smell.
@@ -137,14 +137,14 @@ Methodology:
 
 Findings:
  
-- sim/util/Logger.h
+- sim/util/logger.h
   - Observation: Not included anywhere; symbol `log_info(...)` is not referenced.
   - Evidence: `grep -R "#include .*Logger.h"` and `grep -R "\blog_info\("` found no hits outside the header itself.
   - Recommendation:
-    - Option A: Remove `sim/util/Logger.h` from the repo until we need it.
+    - Option A: Remove `sim/util/logger.h` from the repo until we need it.
     - Option B: Adopt it as a minimal logging facility and start using it in low-level modules (e.g., debug paths guarded by `#ifndef NDEBUG`).
 - Headers listed in targets
-  - `sim/Top.h` is listed among `simlib` sources but is also included by `sim/main.cpp` and `sim/host/HostInterface.cpp`; this is benign. Keeping headers in target sources helps format/lint tooling; no action required.
+  - `sim/top.h` is listed among `simlib` sources but is also included by `sim/main.cc` and `sim/host/host_interface.cc`; this is benign. Keeping headers in target sources helps format/lint tooling; no action required.
 - No other obvious unused markers
   - No explicit `[[maybe_unused]]`/`UNUSED` or deprecation markers found by a quick grep.
 

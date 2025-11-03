@@ -1,10 +1,7 @@
 # unit_tests — GoogleTest-based unit test binary
 # Contains FTL and NAND unit tests. The test list is auto-discovered by
 # gtest_discover_tests() below, which queries the binary at CTest time.
-add_executable(unit_tests
-  test_main.cpp
-  test_ftl.cpp
-)
+add_executable(unit_tests test_main.cc test_ftl.cc)
 target_compile_features(unit_tests PRIVATE cxx_std_20)
 toyssd_apply_werror(unit_tests)
 toyssd_apply_clang_tidy(unit_tests)

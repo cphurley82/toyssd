@@ -147,11 +147,19 @@ file(GLOB_RECURSE TOYSSD_FORMAT_SOURCES
   CONFIGURE_DEPENDS
   ${CMAKE_SOURCE_DIR}/api/*.[ch]pp
   ${CMAKE_SOURCE_DIR}/api/*.[ch]
+  ${CMAKE_SOURCE_DIR}/api/*.cc
+  ${CMAKE_SOURCE_DIR}/api/*.hh
   ${CMAKE_SOURCE_DIR}/sim/*.[ch]pp
   ${CMAKE_SOURCE_DIR}/sim/*.[ch]
+  ${CMAKE_SOURCE_DIR}/sim/*.cc
+  ${CMAKE_SOURCE_DIR}/sim/*.hh
   ${CMAKE_SOURCE_DIR}/tests/*.[ch]pp
   ${CMAKE_SOURCE_DIR}/tests/*.[ch]
+  ${CMAKE_SOURCE_DIR}/tests/*.cc
+  ${CMAKE_SOURCE_DIR}/tests/*.hh
   ${CMAKE_SOURCE_DIR}/fio_plugin/*.[ch]
+  ${CMAKE_SOURCE_DIR}/fio_plugin/*.cc
+  ${CMAKE_SOURCE_DIR}/fio_plugin/*.hh
 )
 string(REPLACE ";" "\n" TOYSSD_FORMAT_SOURCES_NL "${TOYSSD_FORMAT_SOURCES}")
 set(TOYSSD_SCRIPT_DIR ${CMAKE_BINARY_DIR}/cmake-scripts)
@@ -457,10 +465,10 @@ endif()
 add_subdirectory(sim)
 
 # Core simulator shared library
-# Provides a C API surface (api/ssdsim_api.h, api/ssdsim_api.cpp) that can be
+# Provides a C API surface (api/ssdsim_api.h, api/ssdsim_api.cc) that can be
 # loaded by the fio engine. Also includes a tiny sc_main stub to satisfy
 # linkage for consumers that need it.
-add_library(ssdsim SHARED api/ssdsim_api.cpp api/sc_main_stub.cpp)
+add_library(ssdsim SHARED api/ssdsim_api.cc api/sc_main_stub.cc)
 target_compile_features(ssdsim PUBLIC cxx_std_20)
 target_include_directories(ssdsim PUBLIC
   $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
@@ -475,7 +483,7 @@ toyssd_apply_clang_tidy(ssdsim)
 
 # Provide a standalone sc_main stub library.
 # Useful with LD_PRELOAD on Linux to intercept/override sc_main resolution.
-add_library(scmain_stub SHARED api/sc_main_stub.cpp)
+add_library(scmain_stub SHARED api/sc_main_stub.cc)
 target_compile_features(scmain_stub PUBLIC cxx_std_20)
 set_target_properties(scmain_stub PROPERTIES 
   OUTPUT_NAME scmain_stub
@@ -515,7 +523,7 @@ if(TOYSSD_BUILD_FIO_ENGINE)
   set(FIO_INCLUDE_DIR ${fio_SOURCE_DIR})
 
   # Build fio external ioengine module that will dlopen libssdsim at runtime
-  add_library(ssdsim_engine MODULE fio_plugin/ssdsim_engine.c)
+  add_library(ssdsim_engine MODULE fio_plugin/ssdsim_engine.cc)
   # Treat fio headers as system includes so warnings in dependency headers
   # do not trip -Werror on our local target.
   target_include_directories(ssdsim_engine SYSTEM PRIVATE ${FIO_INCLUDE_DIR})

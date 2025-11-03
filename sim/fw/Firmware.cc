@@ -1,7 +1,7 @@
 // Copyright Chris Hurley
-#include "sim/fw/Firmware.h"
+#include "sim/fw/firmware.h"
 
-#include "sim/nand/NandInterface.h"
+#include "sim/nand/nand_interface.h"
 
 // Avoid using-directives; use explicit sc_core:: qualifiers.
 

@@ -1,10 +1,10 @@
 // Copyright Chris Hurley
 #pragma once
-#include "sim/fw/Firmware.h"
-#include "sim/host/HostInterface.h"
-#include "sim/nand/NandInterface.h"
-#include "sim/nand/NandInterfaceImpl.h"
-#include "sim/nand/NandModel.h"
+#include "sim/fw/firmware.h"
+#include "sim/host/host_interface.h"
+#include "sim/nand/nand_interface.h"
+#include "sim/nand/nand_interface_impl.h"
+#include "sim/nand/nand_model.h"
 #include "systemc"
 
 struct Top : sc_core::sc_module {

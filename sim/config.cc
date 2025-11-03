@@ -1,5 +1,5 @@
 // Copyright toyssd contributors
-#include "sim/Config.h"
+#include "sim/config.h"
 
 namespace {
 SimulatorConfig g_config{};
