@@ -1,0 +1,128 @@
+[
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++ -DMAJOR_VERSION=1 -DMINOR_VERSION=0 -Dpysyscsc_EXPORTS -I/home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/pysysc_src-src -isystem /usr/include/python3.12 -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc/include -O3 -DNDEBUG -std=c++20 -fPIC -Werror -o CMakeFiles/pysyscsc.dir/_deps/pysysc_src-src/PyScModule.cpp.o -c /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/pysysc_src-src/PyScModule.cpp",
+  "file": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/pysysc_src-src/PyScModule.cpp",
+  "output": "CMakeFiles/pysyscsc.dir/_deps/pysysc_src-src/PyScModule.cpp.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++ -Dssdsim_EXPORTS -I/home/runner/work/toyssd/toyssd -I/home/runner/work/toyssd/toyssd/api -I/home/runner/work/toyssd/toyssd/sim -I/home/runner/work/toyssd/toyssd/sim/../api -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc/include -O3 -DNDEBUG -std=c++20 -fPIC -Werror -o CMakeFiles/ssdsim.dir/api/ssdsim_api.cc.o -c /home/runner/work/toyssd/toyssd/api/ssdsim_api.cc",
+  "file": "/home/runner/work/toyssd/toyssd/api/ssdsim_api.cc",
+  "output": "CMakeFiles/ssdsim.dir/api/ssdsim_api.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++ -Dssdsim_EXPORTS -I/home/runner/work/toyssd/toyssd -I/home/runner/work/toyssd/toyssd/api -I/home/runner/work/toyssd/toyssd/sim -I/home/runner/work/toyssd/toyssd/sim/../api -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc/include -O3 -DNDEBUG -std=c++20 -fPIC -Werror -o CMakeFiles/ssdsim.dir/api/sc_main_stub.cc.o -c /home/runner/work/toyssd/toyssd/api/sc_main_stub.cc",
+  "file": "/home/runner/work/toyssd/toyssd/api/sc_main_stub.cc",
+  "output": "CMakeFiles/ssdsim.dir/api/sc_main_stub.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++ -Dscmain_stub_EXPORTS  -O3 -DNDEBUG -std=c++20 -fPIC -Werror -o CMakeFiles/scmain_stub.dir/api/sc_main_stub.cc.o -c /home/runner/work/toyssd/toyssd/api/sc_main_stub.cc",
+  "file": "/home/runner/work/toyssd/toyssd/api/sc_main_stub.cc",
+  "output": "CMakeFiles/scmain_stub.dir/api/sc_main_stub.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++ -Dssdsim_engine_EXPORTS -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/fio-src -O3 -DNDEBUG -std=c++20 -fPIC -Werror -o CMakeFiles/ssdsim_engine.dir/fio_plugin/ssdsim_engine.cc.o -c /home/runner/work/toyssd/toyssd/fio_plugin/ssdsim_engine.cc",
+  "file": "/home/runner/work/toyssd/toyssd/fio_plugin/ssdsim_engine.cc",
+  "output": "CMakeFiles/ssdsim_engine.dir/fio_plugin/ssdsim_engine.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-build/googlemock",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++  -I/home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googlemock/include -I/home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googlemock -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest/include -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest -O3 -DNDEBUG -std=c++20 -fPIC -Wall -Wshadow -Wundef -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gmock.dir/src/gmock-all.cc.o -c /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googlemock/src/gmock-all.cc",
+  "file": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googlemock/src/gmock-all.cc",
+  "output": "_deps/googletest-build/googlemock/CMakeFiles/gmock.dir/src/gmock-all.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-build/googlemock",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++  -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googlemock/include -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googlemock -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest/include -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest -O3 -DNDEBUG -std=c++20 -fPIC -Wall -Wshadow -Wundef -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gmock_main.dir/src/gmock_main.cc.o -c /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googlemock/src/gmock_main.cc",
+  "file": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googlemock/src/gmock_main.cc",
+  "output": "_deps/googletest-build/googlemock/CMakeFiles/gmock_main.dir/src/gmock_main.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-build/googletest",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++  -I/home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest/include -I/home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest -O3 -DNDEBUG -std=c++20 -fPIC -Wall -Wshadow -Wundef -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gtest.dir/src/gtest-all.cc.o -c /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest/src/gtest-all.cc",
+  "file": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest/src/gtest-all.cc",
+  "output": "_deps/googletest-build/googletest/CMakeFiles/gtest.dir/src/gtest-all.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-build/googletest",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++  -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest/include -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest -O3 -DNDEBUG -std=c++20 -fPIC -Wall -Wshadow -Wundef -Wno-error=dangling-else -DGTEST_HAS_PTHREAD=1 -fexceptions -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -o CMakeFiles/gtest_main.dir/src/gtest_main.cc.o -c /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest/src/gtest_main.cc",
+  "file": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest/src/gtest_main.cc",
+  "output": "_deps/googletest-build/googletest/CMakeFiles/gtest_main.dir/src/gtest_main.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/sim",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++ -Dsimlib_EXPORTS -I/home/runner/work/toyssd/toyssd -I/home/runner/work/toyssd/toyssd/sim -I/home/runner/work/toyssd/toyssd/sim/../api -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc/include -O3 -DNDEBUG -std=c++20 -fPIC -Werror -o CMakeFiles/simlib.dir/config.cc.o -c /home/runner/work/toyssd/toyssd/sim/config.cc",
+  "file": "/home/runner/work/toyssd/toyssd/sim/config.cc",
+  "output": "sim/CMakeFiles/simlib.dir/config.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/sim",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++ -Dsimlib_EXPORTS -I/home/runner/work/toyssd/toyssd -I/home/runner/work/toyssd/toyssd/sim -I/home/runner/work/toyssd/toyssd/sim/../api -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc/include -O3 -DNDEBUG -std=c++20 -fPIC -Werror -o CMakeFiles/simlib.dir/host/host_interface.cc.o -c /home/runner/work/toyssd/toyssd/sim/host/host_interface.cc",
+  "file": "/home/runner/work/toyssd/toyssd/sim/host/host_interface.cc",
+  "output": "sim/CMakeFiles/simlib.dir/host/host_interface.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/sim",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++ -Dsimlib_EXPORTS -I/home/runner/work/toyssd/toyssd -I/home/runner/work/toyssd/toyssd/sim -I/home/runner/work/toyssd/toyssd/sim/../api -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc/include -O3 -DNDEBUG -std=c++20 -fPIC -Werror -o CMakeFiles/simlib.dir/fw/firmware.cc.o -c /home/runner/work/toyssd/toyssd/sim/fw/firmware.cc",
+  "file": "/home/runner/work/toyssd/toyssd/sim/fw/firmware.cc",
+  "output": "sim/CMakeFiles/simlib.dir/fw/firmware.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/sim",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++ -Dsimlib_EXPORTS -I/home/runner/work/toyssd/toyssd -I/home/runner/work/toyssd/toyssd/sim -I/home/runner/work/toyssd/toyssd/sim/../api -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc/include -O3 -DNDEBUG -std=c++20 -fPIC -Werror -o CMakeFiles/simlib.dir/fw/ftl.cc.o -c /home/runner/work/toyssd/toyssd/sim/fw/ftl.cc",
+  "file": "/home/runner/work/toyssd/toyssd/sim/fw/ftl.cc",
+  "output": "sim/CMakeFiles/simlib.dir/fw/ftl.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/sim",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++ -Dsimlib_EXPORTS -I/home/runner/work/toyssd/toyssd -I/home/runner/work/toyssd/toyssd/sim -I/home/runner/work/toyssd/toyssd/sim/../api -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc/include -O3 -DNDEBUG -std=c++20 -fPIC -Werror -o CMakeFiles/simlib.dir/nand/nand_interface_impl.cc.o -c /home/runner/work/toyssd/toyssd/sim/nand/nand_interface_impl.cc",
+  "file": "/home/runner/work/toyssd/toyssd/sim/nand/nand_interface_impl.cc",
+  "output": "sim/CMakeFiles/simlib.dir/nand/nand_interface_impl.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/sim",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++ -Dsimlib_EXPORTS -I/home/runner/work/toyssd/toyssd -I/home/runner/work/toyssd/toyssd/sim -I/home/runner/work/toyssd/toyssd/sim/../api -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc/include -O3 -DNDEBUG -std=c++20 -fPIC -Werror -o CMakeFiles/simlib.dir/nand/nand_model.cc.o -c /home/runner/work/toyssd/toyssd/sim/nand/nand_model.cc",
+  "file": "/home/runner/work/toyssd/toyssd/sim/nand/nand_model.cc",
+  "output": "sim/CMakeFiles/simlib.dir/nand/nand_model.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/sim",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++  -I/home/runner/work/toyssd/toyssd -I/home/runner/work/toyssd/toyssd/sim -I/home/runner/work/toyssd/toyssd/sim/../api -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc/include -O3 -DNDEBUG -std=c++20 -fPIE -Werror -o CMakeFiles/sim_main.dir/main.cc.o -c /home/runner/work/toyssd/toyssd/sim/main.cc",
+  "file": "/home/runner/work/toyssd/toyssd/sim/main.cc",
+  "output": "sim/CMakeFiles/sim_main.dir/main.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/sim",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++ -Dtoyssd_pycore_EXPORTS -I/home/runner/work/toyssd/toyssd/sim -I/home/runner/work/toyssd/toyssd -I/home/runner/work/toyssd/toyssd/sim/../api -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc/include -O3 -DNDEBUG -std=c++20 -fPIC -Werror -o CMakeFiles/toyssd_pycore.dir/python/toyssd_py_adapter.cc.o -c /home/runner/work/toyssd/toyssd/sim/python/toyssd_py_adapter.cc",
+  "file": "/home/runner/work/toyssd/toyssd/sim/python/toyssd_py_adapter.cc",
+  "output": "sim/CMakeFiles/toyssd_pycore.dir/python/toyssd_py_adapter.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/sim/nand/tests",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++  -I/home/runner/work/toyssd/toyssd -I/home/runner/work/toyssd/toyssd/sim -I/home/runner/work/toyssd/toyssd/sim/../api -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc/include -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest/include -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest -O3 -DNDEBUG -std=c++20 -fPIE -Werror -o CMakeFiles/nand_tests.dir/nand_test.cc.o -c /home/runner/work/toyssd/toyssd/sim/nand/tests/nand_test.cc",
+  "file": "/home/runner/work/toyssd/toyssd/sim/nand/tests/nand_test.cc",
+  "output": "sim/nand/tests/CMakeFiles/nand_tests.dir/nand_test.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/sim/nand/tests",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++  -I/home/runner/work/toyssd/toyssd -I/home/runner/work/toyssd/toyssd/sim -I/home/runner/work/toyssd/toyssd/sim/../api -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc/include -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest/include -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest -O3 -DNDEBUG -std=c++20 -fPIE -Werror -o CMakeFiles/nand_tests.dir/__/__/__/tests/test_main.cc.o -c /home/runner/work/toyssd/toyssd/tests/test_main.cc",
+  "file": "/home/runner/work/toyssd/toyssd/tests/test_main.cc",
+  "output": "sim/nand/tests/CMakeFiles/nand_tests.dir/__/__/__/tests/test_main.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/tests",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++  -I/home/runner/work/toyssd/toyssd -I/home/runner/work/toyssd/toyssd/sim -I/home/runner/work/toyssd/toyssd/sim/../api -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc/include -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest/include -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest -O3 -DNDEBUG -std=c++20 -fPIE -Werror -o CMakeFiles/unit_tests.dir/test_main.cc.o -c /home/runner/work/toyssd/toyssd/tests/test_main.cc",
+  "file": "/home/runner/work/toyssd/toyssd/tests/test_main.cc",
+  "output": "tests/CMakeFiles/unit_tests.dir/test_main.cc.o"
+},
+{
+  "directory": "/home/runner/work/toyssd/toyssd/_codeql_build_dir/tests",
+  "command": "/home/runner/work/toyssd/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++  -I/home/runner/work/toyssd/toyssd -I/home/runner/work/toyssd/toyssd/sim -I/home/runner/work/toyssd/toyssd/sim/../api -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc/include -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest/include -isystem /home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/googletest-src/googletest -O3 -DNDEBUG -std=c++20 -fPIE -Werror -o CMakeFiles/unit_tests.dir/test_ftl.cc.o -c /home/runner/work/toyssd/toyssd/tests/test_ftl.cc",
+  "file": "/home/runner/work/toyssd/toyssd/tests/test_ftl.cc",
+  "output": "tests/CMakeFiles/unit_tests.dir/test_ftl.cc.o"
+}
+]

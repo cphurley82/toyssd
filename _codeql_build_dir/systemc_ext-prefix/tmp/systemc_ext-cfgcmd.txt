@@ -1,0 +1,1 @@
+cmd='/usr/local/bin/cmake;-DCMAKE_INSTALL_PREFIX=/home/runner/work/toyssd/toyssd/_codeql_build_dir/_deps/systemc;-DCMAKE_BUILD_TYPE=$<IF:$<CONFIG:>,Release,$<CONFIG>>;-DCMAKE_CXX_STANDARD=20;-DENABLE_EXAMPLES=OFF;-DENABLE_REGRESSION=OFF;-GUnix Makefiles;-S;<SOURCE_DIR><SOURCE_SUBDIR>;-B;<BINARY_DIR>'
