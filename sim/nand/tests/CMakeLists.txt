@@ -16,11 +16,8 @@ target_include_directories(nand_tests PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(nand_tests PRIVATE simlib systemc gtest_main)
 # Ensure SystemC is available before compiling tests that include <systemc>.
 add_dependencies(nand_tests systemc_ext)
-
-# Standardize test binary output to bin/ to simplify RPATH
-set_target_properties(nand_tests PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
-)
+# Place the binary under bin/ so relative RPATH logic holds.
+toyssd_configure_output_dirs(nand_tests)
 
 if(APPLE)
   # With standardized output dirs, tests live in bin/ and libs in ../lib

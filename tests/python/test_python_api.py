@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import time
 
-import toyssd
+import pytest
+
+toyssd = pytest.importorskip("toyssd")
 
 
 def test_toyssd_basic_write_flow() -> None:

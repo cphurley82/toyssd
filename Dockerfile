@@ -38,7 +38,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # - We clean apt lists at the end to reduce layer size.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential cmake git pkg-config \
-    python3 python3-venv python3-dev \
+    python3 python3-venv python3-dev python3.12-dev \
     clang-format clang-tidy cppcheck \
     libaio-dev zlib1g-dev libnuma-dev fio \
     ca-certificates curl wget \

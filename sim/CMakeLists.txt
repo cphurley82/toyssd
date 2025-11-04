@@ -30,13 +30,8 @@ target_include_directories(simlib PUBLIC
 
 target_link_libraries(simlib PUBLIC systemc)
 set_target_properties(simlib PROPERTIES EXPORT_NAME simlib)
-set_target_properties(simlib PROPERTIES
-  # Tidy build tree layout: libraries -> lib/, executables -> bin/
-  # Use $<CONFIG> so multi-config generators (Xcode/VS) keep configs separate.
-  LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
-  ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
-)
+# Keep build artifacts under the shared bin/lib layout for predictable RPATHs.
+toyssd_configure_output_dirs(simlib)
 
 # sim_main — standalone SystemC entry-point
 # WHY: Keep sc_main out of libraries to avoid accidental multiple-definition
@@ -46,9 +41,8 @@ add_executable(sim_main main.cc)
 target_compile_features(sim_main PRIVATE cxx_std_20)
 target_link_libraries(sim_main PRIVATE simlib systemc)
 add_dependencies(sim_main systemc_ext)
-set_target_properties(sim_main PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
-)
+# Executable lives in bin/ next to the rest of the simulator CLI tooling.
+toyssd_configure_output_dirs(sim_main)
 toyssd_apply_werror(sim_main)
 toyssd_apply_clang_tidy(sim_main)
 
@@ -71,12 +65,9 @@ if(TOYSSD_BUILD_PYTHON)
     INSTALL_RPATH "${_toyssd_py_rpath}"
     BUILD_RPATH "${_toyssd_py_rpath}"
   )
-  set_target_properties(toyssd_pycore PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
-    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
-    EXPORT_NAME toyssd_pycore
-  )
+  set_target_properties(toyssd_pycore PROPERTIES EXPORT_NAME toyssd_pycore)
+  # Shared library needs stable lib/ location for Python packaging and RPATH.
+  toyssd_configure_output_dirs(toyssd_pycore)
   toyssd_apply_werror(toyssd_pycore)
   toyssd_apply_clang_tidy(toyssd_pycore)
 endif()

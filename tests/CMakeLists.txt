@@ -14,11 +14,8 @@ target_include_directories(unit_tests PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(unit_tests PRIVATE simlib systemc gtest_main)
 # Build and install SystemC before compiling tests that include <systemc>.
 add_dependencies(unit_tests systemc_ext)
-
-# Standardize test binary output to bin/ to simplify RPATH
-set_target_properties(unit_tests PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
-)
+# Place the binary under bin/ so relative RPATH logic holds.
+toyssd_configure_output_dirs(unit_tests)
 
 if(APPLE)
   # With standardized output dirs, tests live in bin/ and libs in ../lib

@@ -172,11 +172,11 @@ struct ioengine_ops ioengine = {
     .flags = FIO_DISKLESSIO,
     .init = ssdsim_init,
     .queue = ssdsim_queue,
+    .commit = ssdsim_commit,
     .getevents = ssdsim_getevents,
     .event = ssdsim_event,
-    .commit = ssdsim_commit,
-    .open_file = ssdsim_open_file,
     .cleanup = ssdsim_cleanup,
+    .open_file = ssdsim_open_file,
 };
 
 // External ioengine entry point expected by fio when loading modules.

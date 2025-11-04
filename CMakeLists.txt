@@ -111,6 +111,12 @@ include(GNUInstallDirs)
 #   like add_test(), enabling users to -DBUILD_TESTING=OFF cleanly.
 include(CTest)
 
+# Standardized build-tree output directories used by helper functions below.
+# WHY: Keep all libraries under lib/ and executables under bin/ so runtime
+#   lookup remains predictable and RPATH settings can be minimal.
+set(TOYSSD_BIN_DIR "${CMAKE_BINARY_DIR}/$<CONFIG>/bin")
+set(TOYSSD_LIB_DIR "${CMAKE_BINARY_DIR}/$<CONFIG>/lib")
+
 ########################################
 # Helper functions for target policies  #
 ########################################
@@ -123,6 +129,18 @@ function(toyssd_apply_werror tgt)
       target_compile_options(${tgt} PRIVATE -Werror)
     endif()
   endif()
+endfunction()
+
+function(toyssd_configure_output_dirs tgt)
+  if(NOT TARGET ${tgt})
+    return()
+  endif()
+  # Apply consistent locations for both build and install tree artifacts.
+  set_target_properties(${tgt} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${TOYSSD_BIN_DIR}"
+    LIBRARY_OUTPUT_DIRECTORY "${TOYSSD_LIB_DIR}"
+    ARCHIVE_OUTPUT_DIRECTORY "${TOYSSD_LIB_DIR}"
+  )
 endfunction()
 
 ## clang-tidy support (scoped per-target)
@@ -437,6 +455,16 @@ set_target_properties(systemc PROPERTIES
 #   We fetch sources and patch in-tree so we can build the module alongside
 #   this project without requiring separate packaging. Only fetch/populate
 #   when Python bindings are enabled to avoid unnecessary network access.
+
+# First, ensure the local toolchain provides Python development headers.
+if(TOYSSD_BUILD_PYTHON)
+  find_package(Python3 COMPONENTS Interpreter Development.Module QUIET)
+  if(NOT Python3_FOUND OR NOT TARGET Python3::Module)
+    message(WARNING "Python3 development headers not found; disabling TOYSSD_BUILD_PYTHON")
+    set(TOYSSD_BUILD_PYTHON OFF CACHE BOOL "Build Python bindings and vendored dependencies" FORCE)
+  endif()
+endif()
+
 if(TOYSSD_BUILD_PYTHON)
   FetchContent_Declare(
     pysysc_src
@@ -459,9 +487,8 @@ if(TOYSSD_BUILD_PYTHON)
       file(WRITE ${_pysysc_module} "${_pysysc_patched}")
     endif()
   endif()
-endif()
 
-if(TOYSSD_BUILD_PYTHON)
+  # Refresh FindPython3 results with REQUIRED now that we know headers exist.
   find_package(Python3 COMPONENTS Interpreter Development.Module REQUIRED)
 
   Python3_add_library(pysyscsc MODULE
@@ -512,12 +539,8 @@ target_include_directories(ssdsim PUBLIC
 )
 target_link_libraries(ssdsim PRIVATE simlib systemc)
 set_target_properties(ssdsim PROPERTIES EXPORT_NAME ssdsim)
-# Standardize output dirs (bin/lib) for easier runtime resolution
-set_target_properties(ssdsim PROPERTIES
-  LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
-  ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
-)
+# Keep build artifacts under the shared bin/lib layout for predictable RPATHs.
+toyssd_configure_output_dirs(ssdsim)
 add_dependencies(ssdsim format)
 toyssd_apply_werror(ssdsim)
 toyssd_apply_clang_tidy(ssdsim)
@@ -532,12 +555,8 @@ set_target_properties(scmain_stub PROPERTIES
   OUTPUT_NAME scmain_stub
   EXPORT_NAME scmain_stub
 )
-# Standardize output dirs (bin/lib) for easier runtime resolution
-set_target_properties(scmain_stub PROPERTIES
-  LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
-  ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
-  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
-)
+# Keep build artifacts under the shared bin/lib layout for predictable RPATHs.
+toyssd_configure_output_dirs(scmain_stub)
 add_dependencies(scmain_stub format)
 toyssd_apply_werror(scmain_stub)
 toyssd_apply_clang_tidy(scmain_stub)
@@ -576,12 +595,8 @@ if(TOYSSD_BUILD_FIO_ENGINE)
   # Treat fio headers as system includes so warnings in dependency headers
   # do not trip -Werror on our local target.
   target_include_directories(ssdsim_engine SYSTEM PRIVATE ${FIO_INCLUDE_DIR})
-  # Standardize output dirs (place module next to other libs)
-  set_target_properties(ssdsim_engine PROPERTIES
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
-    ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/lib"
-    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/$<CONFIG>/bin"
-  )
+  # Keep build artifacts under the shared bin/lib layout for predictable RPATHs.
+  toyssd_configure_output_dirs(ssdsim_engine)
 
   # macOS-specific tweaks:
   if(APPLE)
@@ -592,6 +607,10 @@ if(TOYSSD_BUILD_FIO_ENGINE)
     #   the remaining symbols. On macOS we must explicitly allow undefined
     #   references so the loader can resolve them at runtime.
     target_link_options(ssdsim_engine PRIVATE -Wl,-undefined,dynamic_lookup)
+  elseif(UNIX AND NOT APPLE)
+    # On recent glibc, gettid() is provided by <unistd.h>; avoid redefining it in
+    # fio's os-linux.h helper to keep builds warning-free with -Werror.
+    target_compile_definitions(ssdsim_engine PRIVATE CONFIG_HAVE_GETTID=1)
   endif()
 
   # Demo configuration options
