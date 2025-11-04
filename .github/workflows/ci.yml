@@ -1,0 +1,54 @@
+name: macos-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    name: macOS
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-13]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Bootstrap toolchain
+        run: uv run invoke bootstrap
+
+      - name: Build
+        run: uv run invoke build
+
+      - name: Run tests
+        run: uv run invoke test
+
+      - name: Lint
+        run: uv run invoke lint
+
+      - name: Check Python formatting
+        run: uv run python -m ruff format --check python
+
+      - name: Check clang-format
+        run: |
+          set -eo pipefail
+          files=$(git ls-files '*.cpp' '*.hpp')
+          if [[ -n "$files" ]]; then
+            for file in $files; do
+              diff -u "$file" <(clang-format --style=file "$file")
+            done
+          fi
