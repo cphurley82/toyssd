@@ -7,11 +7,15 @@ on:
 
 jobs:
   build:
-    name: macOS
-    runs-on: ${{ matrix.os }}
+    name: macOS ${{ matrix.label }}
+    runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
-        os: [macos-13]
+        include:
+          - runner: macos-latest
+            label: ARM64
+          - runner: macos-15-intel
+            label: Intel
     defaults:
       run:
         shell: bash
