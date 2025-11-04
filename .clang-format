@@ -1,0 +1,16 @@
+BasedOnStyle: Google
+DerivePointerAlignment: false
+PointerAlignment: Left
+SortIncludes: true
+IncludeBlocks: Preserve
+IncludeCategories:
+  - Regex: '^<c[^/]+>'      # C++ standard library headers from <c...>
+    Priority: 1
+  - Regex: '^<[^/]+>'       # Other C/C++ system headers
+    Priority: 2
+  - Regex: '^<tlm(|_utils)/'  # SystemC TLM headers
+    Priority: 3
+  - Regex: '^<systemc>'     # SystemC core header
+    Priority: 4
+  - Regex: '^"toyssd/.*"'   # Project headers
+    Priority: 5

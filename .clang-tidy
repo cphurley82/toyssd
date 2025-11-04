@@ -1,0 +1,11 @@
+# Restrict enabled checks to Google, performance, and readability suites.
+Checks: '-*,google-*,performance-*,readability-*'
+
+# Treat every diagnostic from the enabled checks as an error.
+WarningsAsErrors: '*'
+
+# Only lint headers under include/toyssd to avoid third-party code.
+HeaderFilterRegex: 'include/toyssd/.*'
+
+# Do not run clang-format when applying clang-tidy fixes.
+FormatStyle: none
