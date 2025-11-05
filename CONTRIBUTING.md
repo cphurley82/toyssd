@@ -58,6 +58,7 @@ These practices complement the language-specific guidance below and are reinforc
 
 - Follow the Google C++ Style Guide (mirrors clang-format/clang-tidy defaults in the repo).
 - Use modern C++20 features where appropriate (e.g., `std::span`, `std::optional`, `constexpr`).
+- Prefer smart pointers (`std::unique_ptr`, `std::shared_ptr`) over manual `new` and raw pointers to prevent memory leaks.
 - Keep translation units small and headers self-contained.
 - Add focused GoogleTests for new logic (host/controller/nand behavior, TLM extensions).
 
