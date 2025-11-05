@@ -3,6 +3,8 @@ DerivePointerAlignment: false
 PointerAlignment: Left
 SortIncludes: true
 IncludeBlocks: Preserve
+# The IncludeCategories are ordered to align with cpplint's expected header groups
+# so that clang-format's include sorting doesn't trigger cpplint header order warnings.
 IncludeCategories:
   - Regex: '^<c[^/]+>'      # C++ standard library headers from <c...>
     Priority: 1

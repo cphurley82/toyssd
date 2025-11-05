@@ -7,5 +7,5 @@ WarningsAsErrors: '*'
 # Only lint headers under include/toyssd to avoid third-party code.
 HeaderFilterRegex: 'include/toyssd/.*'
 
-# Do not run clang-format when applying clang-tidy fixes.
+# Do not run clang-format when applying clang-tidy fixes to keep diffs focused.
 FormatStyle: none
