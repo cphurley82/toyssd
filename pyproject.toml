@@ -1,48 +1,95 @@
+# pyproject.toml — single source of truth for Python metadata, build
+# backend, and tooling:
+#
+# - Publish/install the Python package while the C++ core is built via
+#   CMake (scikit-build-core bridges pip and CMake).
+# - Configure local developer tools (pytest, mypy, isort) in one place.
+
+# Project metadata used by packaging tools (pip, build backends, indexes
+# like PyPI)
 [project]
+# Simple, importable package name (what `pip install` and `import` will use)
 name = "toyssd"
+# Bump this on user-visible changes; used for packaging and reproducible builds
 version = "0.1.0"
+# Short human-friendly description shown in package indexes
 description = "Modular SSD simulator skeleton backed by SystemC"
+# Long-form documentation to display on package pages
 readme = "docs/ssd_sim_design.md"
+# Support modern Python features and type hints; also narrows the wheel targets
 requires-python = ">=3.10"
+# Authors are optional but helpful for provenance and support
 authors = [
   { name = "toyssd contributors" }
 ]
+# Runtime dependencies only; installed for end users. Keep this minimal to
+# speed installs.
 dependencies = [
+  # simple, reliable data containers used in config and models
   "attrs>=23.2.0",
+  # task runner used in tools/tasks.py for developer workflows
   "invoke>=2.2.0",
+  # vectorized numeric ops; useful for workloads and metrics
   "numpy>=1.26.0",
+  # pretty CLI output for progress and visualization hooks
   "rich>=13.7.0"
 ]
 
 [project.optional-dependencies]
+# Developer-only extras. Install with: `pip install .[dev]`.
+# Keep linting/testing tools out of runtime to avoid burdening users.
 dev = [
+  # test runner
   "pytest>=8.0.0",
+  # static type checker
   "mypy>=1.8.0",
+  # type hints for invoke so mypy understands tasks
   "types-invoke>=2.0.0.10",
+  # C++ style checks to keep c++ code tidy
   "cpplint>=1.6.1",
+  # fast Python linter/formatter (complements black style)
   "ruff>=0.2.0"
 ]
 
 [build-system]
+# scikit-build-core is the modern bridge from Python packaging to CMake.
+# It lets us build the SystemC-backed C++ core and ship wheels via pip.
 requires = ["scikit-build-core>=0.7.0", "setuptools", "wheel"]
+# scikit-build-core provides the PEP 517 backend entry point
 build-backend = "scikit_build_core.build"
 
 [tool.uv.sources]
+# Map the `toyssd` package to the local `python/` directory in editable
+# mode when using uv (a fast Python package manager). Safe to ignore for pip.
 toyssd = { path = "python", editable = true }
 
 [tool.scikit-build]
+# Minimum scikit-build-core version features we rely on
 minimum-version = "0.7"
+# Wheel Python ABI tag. "cp311" produces a CPython-3.11-specific wheel,
+# which can improve compatibility with compiled extensions at the cost of
+# being version-specific.
+# TODO: Omit this or use a more generic tag per scikit-build-core docs.
 wheel.py-api = "cp311"
+# Pass through a CMake cache definition. Default tests OFF to speed CI
+# builds of wheels and avoid bundling test-only artifacts. Override at
+# build time with: `-C cmake.define.TOYSSD_BUILD_TESTS=ON`.
 cmake.define.TOYSSD_BUILD_TESTS = "OFF"
 
 [tool.pytest.ini_options]
+# Keep pytest focused on our Python test directory and reduce noise by default
 testpaths = ["python/tests"]
+# quiet mode by default; use -vv locally when debugging
 addopts = "-q"
 
 [tool.mypy]
+# Static type checking settings. Target our main dev Python version for stubs.
 python_version = "3.11"
+# Many third-party packages lack type hints; ignoring missing imports avoids noise.
 ignore_missing_imports = true
+# Start with non-strict to ease adoption; tighten as the project grows.
 strict = false
 
 [tool.isort]
+# Match Black's import style so tools don't fight each other.
 profile = "black"
