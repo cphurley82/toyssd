@@ -33,6 +33,7 @@ toyssd = { path = "python", editable = true }
 [tool.scikit-build]
 minimum-version = "0.7"
 wheel.py-api = "cp311"
+cmake.define.TOYSSD_BUILD_TESTS = "OFF"
 
 [tool.pytest.ini_options]
 testpaths = ["python/tests"]

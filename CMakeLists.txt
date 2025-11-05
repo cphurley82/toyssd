@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(TOYSSD_BUILD_TESTS "Build toyssd unit tests" ON)
+option(TOYSSD_BUILD_TESTS "Build toyssd unit tests" OFF)
 option(TOYSSD_ENABLE_WARNINGS "Enable strict compiler warnings" ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -20,6 +20,21 @@ include(FetchContent)
 
 if(POLICY CMP0169)
     cmake_policy(SET CMP0169 OLD)
+endif()
+
+if(APPLE)
+    if(NOT DEFINED CMAKE_OSX_ARCHITECTURES OR CMAKE_OSX_ARCHITECTURES STREQUAL "")
+        set(_toyssd_host_arch "${CMAKE_SYSTEM_PROCESSOR}")
+        if(_toyssd_host_arch MATCHES "^(arm64|aarch64)$")
+            set(_toyssd_host_arch "arm64")
+        elseif(_toyssd_host_arch MATCHES "^(x86_64|amd64)$")
+            set(_toyssd_host_arch "x86_64")
+        else()
+            message(WARNING "Unrecognized macOS architecture '${_toyssd_host_arch}'. Falling back to arm64.")
+            set(_toyssd_host_arch "arm64")
+        endif()
+        set(CMAKE_OSX_ARCHITECTURES "${_toyssd_host_arch}" CACHE STRING "Target macOS architectures" FORCE)
+    endif()
 endif()
 
 FetchContent_Declare(

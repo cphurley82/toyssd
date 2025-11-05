@@ -31,10 +31,46 @@ def _detect_sdkroot() -> str | None:
         return None
 
 
-APPLE_CLANG_ENV = {"CC": "/usr/bin/clang", "CXX": "/usr/bin/clang++"}
+APPLE_CLANG_ENV = {
+    "CC": "/usr/bin/clang",
+    "CXX": "/usr/bin/clang++",
+    "CMAKE_C_COMPILER": "/usr/bin/clang",
+    "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
+}
 _sdkroot = _detect_sdkroot()
 if _sdkroot:
     APPLE_CLANG_ENV.setdefault("SDKROOT", _sdkroot)
+
+
+def _detect_macos_arch() -> str | None:
+    if platform.system() != "Darwin":
+        return None
+    arch = os.environ.get("CMAKE_OSX_ARCHITECTURES")
+    if arch:
+        return arch
+    machine = platform.machine().lower()
+    if machine in {"arm64", "aarch64"}:
+        return "arm64"
+    if machine in {"x86_64", "amd64"}:
+        return "x86_64"
+    return None
+
+
+_macos_arch = _detect_macos_arch()
+if _macos_arch:
+    APPLE_CLANG_ENV.setdefault("CMAKE_OSX_ARCHITECTURES", _macos_arch)
+
+
+def _cmake_sysroot_flag() -> str:
+    if _sdkroot:
+        return f" -DCMAKE_OSX_SYSROOT={shlex.quote(_sdkroot)}"
+    return ""
+
+
+def _cmake_arch_flag() -> str:
+    if _macos_arch:
+        return f" -DCMAKE_OSX_ARCHITECTURES={shlex.quote(_macos_arch)}"
+    return ""
 
 
 def _compiler_env(**overrides: str) -> dict[str, str]:
@@ -65,7 +101,7 @@ def bootstrap(ctx) -> None:
     debug_dir = BUILD_DIR / "debug"
     debug_dir.mkdir(parents=True, exist_ok=True)
     ctx.run(
-        f"cmake -S {ROOT} -B {debug_dir} -DCMAKE_BUILD_TYPE=Debug",
+        f"cmake -S {ROOT} -B {debug_dir} -DCMAKE_BUILD_TYPE=Debug{_cmake_sysroot_flag()}{_cmake_arch_flag()} -DTOYSSD_BUILD_TESTS=ON",
         pty=True,
         env=_compiler_env(),
     )
@@ -77,7 +113,7 @@ def build(ctx, config: str = "Debug") -> None:
     build_dir = BUILD_DIR / config.lower()
     build_dir.mkdir(parents=True, exist_ok=True)
     ctx.run(
-        f"cmake -S {ROOT} -B {build_dir} -DCMAKE_BUILD_TYPE={config}",
+        f"cmake -S {ROOT} -B {build_dir} -DCMAKE_BUILD_TYPE={config}{_cmake_sysroot_flag()}{_cmake_arch_flag()} -DTOYSSD_BUILD_TESTS=ON",
         pty=True,
         env=_compiler_env(),
     )
@@ -124,7 +160,7 @@ def lint(ctx) -> None:
     build_dir = BUILD_DIR / "debug"
     build_dir.mkdir(parents=True, exist_ok=True)
     ctx.run(
-        f"cmake -S {ROOT} -B {build_dir} -DCMAKE_BUILD_TYPE=Debug",
+        f"cmake -S {ROOT} -B {build_dir} -DCMAKE_BUILD_TYPE=Debug{_cmake_sysroot_flag()}{_cmake_arch_flag()} -DTOYSSD_BUILD_TESTS=ON",
         pty=True,
         env=_compiler_env(),
     )
