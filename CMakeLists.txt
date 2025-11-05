@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-option(TOYSSD_BUILD_TESTS "Build toyssd unit tests" OFF)
+option(TOYSSD_BUILD_TESTS "Build toyssd unit tests" ON)
 option(TOYSSD_ENABLE_WARNINGS "Enable strict compiler warnings" ON)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
