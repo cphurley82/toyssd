@@ -32,6 +32,19 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      - name: Install clang tools
+        run: |
+          if ! brew list llvm >/dev/null 2>&1; then
+            brew install llvm
+          fi
+          echo "LLVM_PREFIX=$(brew --prefix llvm)" >> "$GITHUB_ENV"
+
+      - name: Install CMake
+        run: |
+          if ! command -v cmake >/dev/null 2>&1; then
+            brew install cmake
+          fi
+
       - name: Bootstrap toolchain
         run: uv run invoke bootstrap
 
@@ -41,13 +54,26 @@ jobs:
       - name: Run tests
         run: uv run invoke test
 
+      - name: Verify cmake availability
+        run: |
+          echo "Checking cmake availability..."
+          which cmake || echo "cmake not found in PATH"
+          cmake --version || echo "cmake command failed"
+          echo "Current PATH: $PATH"
+
       - name: Lint
+        env:
+          PATH: "${{ env.LLVM_PREFIX }}/bin:${{ env.PATH }}"
+          CC: /usr/bin/clang
+          CXX: /usr/bin/clang++
         run: uv run invoke lint
 
       - name: Check Python formatting
         run: uv run python -m ruff format --check python
 
       - name: Check clang-format
+        env:
+          PATH: "${{ env.LLVM_PREFIX }}/bin:${{ env.PATH }}"
         run: |
           set -eo pipefail
           files=$(git ls-files '*.cpp' '*.hpp')
