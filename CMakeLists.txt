@@ -22,6 +22,21 @@ if(POLICY CMP0169)
     cmake_policy(SET CMP0169 OLD)
 endif()
 
+if(APPLE)
+    if(NOT DEFINED CMAKE_OSX_ARCHITECTURES OR CMAKE_OSX_ARCHITECTURES STREQUAL "")
+        set(_toyssd_host_arch "${CMAKE_SYSTEM_PROCESSOR}")
+        if(_toyssd_host_arch MATCHES "^(arm64|aarch64)$")
+            set(_toyssd_host_arch "arm64")
+        elseif(_toyssd_host_arch MATCHES "^(x86_64|amd64)$")
+            set(_toyssd_host_arch "x86_64")
+        else()
+            message(WARNING "Unrecognized macOS architecture '${_toyssd_host_arch}'. Falling back to arm64.")
+            set(_toyssd_host_arch "arm64")
+        endif()
+        set(CMAKE_OSX_ARCHITECTURES "${_toyssd_host_arch}" CACHE STRING "Target macOS architectures" FORCE)
+    endif()
+endif()
+
 FetchContent_Declare(
     systemc
     URL https://github.com/accellera-official/systemc/archive/refs/tags/3.0.2.tar.gz

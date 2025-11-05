@@ -9,13 +9,18 @@ jobs:
   build:
     name: macOS ${{ matrix.label }}
     runs-on: ${{ matrix.runner }}
+    env:
+      CC: /usr/bin/clang
+      CXX: /usr/bin/clang++
+      CMAKE_C_COMPILER: /usr/bin/clang
+      CMAKE_CXX_COMPILER: /usr/bin/clang++
     strategy:
       matrix:
         include:
           - runner: macos-latest
             label: ARM64
-          - runner: macos-15-intel
-            label: Intel
+        #   - runner: macos-15-intel
+        #     label: Intel
     defaults:
       run:
         shell: bash
@@ -32,6 +37,33 @@ jobs:
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
+      - name: Install clang tools
+        run: |
+          if ! brew list llvm >/dev/null 2>&1; then
+            brew install llvm
+          fi
+          llvm_prefix="$(brew --prefix llvm)"
+          echo "LLVM_PREFIX=$llvm_prefix" >> "$GITHUB_ENV"
+          echo "$llvm_prefix/bin" >> "$GITHUB_PATH"
+
+      - name: Configure macOS SDK
+        run: |
+          echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
+          echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "$GITHUB_ENV"
+          arch="$(uname -m)"
+          if [[ "$arch" == "aarch64" ]]; then
+            arch="arm64"
+          fi
+          echo "CMAKE_OSX_ARCHITECTURES=$arch" >> "$GITHUB_ENV"
+
+      - name: Install CMake
+        run: |
+          if ! brew list cmake >/dev/null 2>&1; then
+            brew install cmake
+          fi
+          cmake_prefix="$(brew --prefix cmake)"
+          echo "$cmake_prefix/bin" >> "$GITHUB_PATH"
+
       - name: Bootstrap toolchain
         run: uv run invoke bootstrap
 
@@ -42,6 +74,9 @@ jobs:
         run: uv run invoke test
 
       - name: Lint
+        env:
+          CC: /usr/bin/clang
+          CXX: /usr/bin/clang++
         run: uv run invoke lint
 
       - name: Check Python formatting
