@@ -40,10 +40,25 @@ These commands cover clang-format, clang-tidy, cpplint, and Ruff. If you intenti
 - Prefer Python 3.11 for now. uv pins compatible wheels for SystemC/PySysC integration.
 - Install the Xcode Command Line Tools (`xcode-select --install`). Invoke tasks set `CC=/usr/bin/clang` and `CXX=/usr/bin/clang++` so the Apple-provided SDK-aware toolchain is used when compiling SystemC.
 
+## Clean Code Principles
+
+We strive to follow clean code principles across both C++ and Python:
+
+- Prefer clear, intention-revealing names and consistent terminology.
+- Keep functions/classes small with a single, focused responsibility.
+- Avoid duplication (DRY) and remove dead or obsolete code.
+- Prefer composition over inheritance where it improves clarity.
+- Minimize mutable shared state; make side effects and data flow explicit.
+- Fail fast with meaningful errors; handle edge cases deliberately.
+- Write tests alongside code and refactor confidently.
+
+These practices complement the language-specific guidance below and are reinforced by our format and lint tooling.
+
 ### C++ Guidelines
 
 - Follow the Google C++ Style Guide (mirrors clang-format/clang-tidy defaults in the repo).
-- Prefer `std::unique_ptr`/`std::shared_ptr` to manual `new`.
+- Use modern C++20 features where appropriate (e.g., `std::span`, `std::optional`, `constexpr`).
+- Prefer smart pointers (`std::unique_ptr`, `std::shared_ptr`) over manual `new` and raw pointers to prevent memory leaks.
 - Keep translation units small and headers self-contained.
 - Add focused GoogleTests for new logic (host/controller/nand behavior, TLM extensions).
 
@@ -81,4 +96,4 @@ We maintain a running changelog in the design doc until a formal `CHANGELOG.md` 
 
 Open a GitHub issue or start a discussion thread. If you are unsure about an approach, share early sketches in the issue tracker before writing code.
 
-Happy hacking!
+Happy coding!
