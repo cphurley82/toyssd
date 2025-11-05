@@ -1,7 +1,7 @@
 """Invoke tasks for the toyssd development workflow.
 
 This task collection standardizes common developer actions (bootstrap, build,
-test, format, lint) across platforms. The script intentionally prefers 
+test, format, lint) across platforms. The script intentionally prefers
 deterministic, reproducible configuration.
 
 Every task runs commands with a merged environment that includes the necessary 

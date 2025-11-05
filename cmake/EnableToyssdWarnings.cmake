@@ -11,7 +11,7 @@
 function(toyssd_enable_warnings target)
     if(MSVC)
         # /permissive- enables standards-conforming behavior in MSVC.
-    # /W4 selects a high warning level that's still practical for CI.
+        # /W4 selects a high warning level that's still practical for CI.
         target_compile_options(${target} PRIVATE /permissive- /W4)
     else()
         # GCC/Clang common warning set:
