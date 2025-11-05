@@ -56,10 +56,13 @@ jobs:
 
       - name: Verify cmake availability
         run: |
-          echo "Checking cmake availability..."
-          which cmake || echo "cmake not found in PATH"
-          cmake --version || echo "cmake command failed"
+          echo "=== Verifying cmake availability for debugging ==="
           echo "Current PATH: $PATH"
+          echo "Checking cmake location:"
+          which cmake || echo "WARNING: cmake not found in PATH"
+          echo "Checking cmake version:"
+          cmake --version || echo "WARNING: cmake command failed"
+          echo "=== End of cmake verification ==="
 
       - name: Lint
         env:
