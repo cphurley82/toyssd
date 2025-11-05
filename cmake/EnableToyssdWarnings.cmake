@@ -15,6 +15,7 @@ function(toyssd_enable_warnings target)
         target_compile_options(${target} PRIVATE /permissive- /W4)
     else()
         # GCC/Clang common warning set:
+        # -Wall -Wextra: broad baseline for common mistakes.
         # -Wpedantic: enforce standard-conforming code (no compiler extensions).
         # -Wconversion -Wsign-conversion: highlight implicit/narrowing casts and
         #   signed/unsigned mismatches that often bite at boundaries.
