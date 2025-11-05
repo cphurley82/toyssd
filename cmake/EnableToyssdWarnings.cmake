@@ -1,6 +1,6 @@
 ## Centralized warnings policy for toyssd
 #
-# Encapsulates our warning flags keeps the top-level concise
+# Encapsulates our warning flags to keep the top-level concise
 # and applies a consistent policy to all targets that opt in.
 #
 # Philosophy:
