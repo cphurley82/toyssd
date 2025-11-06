@@ -84,6 +84,10 @@ class SimConfig:
     """
 
     nand_geometry: NandGeometry
+    # Backend selector: "python" uses the in-memory bridge (fast, no native
+    # deps). "systemc" selects the native SystemC/PySysC-backed implementation
+    # once available. We validate choices in __post_init__.
+    backend: str = "python"
     enable_visualization: bool = True
     log_level: str = "INFO"
     event_buffer_capacity: int = 1024
@@ -108,4 +112,9 @@ class SimConfig:
         if self.log_level.upper() not in valid_levels:
             raise ValueError(
                 f"log_level must be one of {sorted(valid_levels)}; got {self.log_level}"
+            )
+        valid_backends = {"python", "systemc"}
+        if self.backend.lower() not in valid_backends:
+            raise ValueError(
+                f"backend must be one of {sorted(valid_backends)}; got {self.backend}"
             )
