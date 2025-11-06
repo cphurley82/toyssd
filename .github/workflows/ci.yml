@@ -1,3 +1,9 @@
+# CI workflow for deterministic builds.
+# Goals:
+# - Use uv for fast, reproducible Python environments.
+# - Delegate orchestration (bootstrap/build/test/lint) to Invoke tasks to keep
+#   CI logic DRY.
+
 name: macos-ci
 
 on:
@@ -7,9 +13,12 @@ on:
 
 jobs:
   build:
+    # Display the active arch/label from the matrix for quick identification in
+    # the UI.
     name: macOS ${{ matrix.label }}
     runs-on: ${{ matrix.runner }}
     env:
+      # Pin compilers both CMake uses Apple Clang.
       CC: /usr/bin/clang
       CXX: /usr/bin/clang++
       CMAKE_C_COMPILER: /usr/bin/clang
@@ -17,27 +26,34 @@ jobs:
     strategy:
       matrix:
         include:
+          # Prefer the latest macOS ARM64 image.
           - runner: macos-latest
             label: ARM64
+          # TODO: Re-enable Intel testing.
         #   - runner: macos-15-intel
         #     label: Intel
     defaults:
       run:
-        shell: bash
+        shell: bash  # Consistent shell semantics across platforms
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4  # Fetch repository sources
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.11"  # Aligns with pyproject and typing targets
 
       - name: Install uv
+        # Fast, reproducible Python environments without heavy virtualenv 
+        # overhead.
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - name: Install clang tools
+        # Install recent LLVM utilities (clang-format/clang-tidy) from Homebrew.
+        # We still compile using Apple Clang (see env above) for reliable SDK
+        # integration.
         run: |
           if ! brew list llvm >/dev/null 2>&1; then
             brew install llvm
@@ -47,6 +63,8 @@ jobs:
           echo "$llvm_prefix/bin" >> "$GITHUB_PATH"
 
       - name: Configure macOS SDK
+        # Export SDK and arch to prevent header/framework resolution drift and
+        # arch mismatches.
         run: |
           echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
           echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "$GITHUB_ENV"
@@ -57,6 +75,8 @@ jobs:
           echo "CMAKE_OSX_ARCHITECTURES=$arch" >> "$GITHUB_ENV"
 
       - name: Install CMake
+        # Ensure a modern CMake is available for FetchContent and better
+        # diagnostics.
         run: |
           if ! brew list cmake >/dev/null 2>&1; then
             brew install cmake
@@ -65,24 +85,36 @@ jobs:
           echo "$cmake_prefix/bin" >> "$GITHUB_PATH"
 
       - name: Bootstrap toolchain
+        # Runs Invoke bootstrap to install Python deps and configure CMake.
+        # See tools/invoke_tasks.py: bootstrap
         run: uv run invoke bootstrap
 
       - name: Build
+        # Compiles targets using the configured build tree.
+        # See tools/invoke_tasks.py: build
         run: uv run invoke build
 
       - name: Run tests
+        # Executes C++ tests via ctest and Python tests via pytest.
+        # See tools/invoke_tasks.py: test
         run: uv run invoke test
 
       - name: Lint
         env:
           CC: /usr/bin/clang
           CXX: /usr/bin/clang++
+        # Runs clang-tidy/cpplint/ruff as configured by Invoke.
+        # Pinning CC/CXX keeps compile_commands coherent for clang-tidy.
         run: uv run invoke lint
 
       - name: Check Python formatting
+        # Enforce Ruff formatter in check-only mode to fail on style drift.
         run: uv run python -m ruff format --check python
 
       - name: Check clang-format
+        # Show unified diffs against the repository's .clang-format rules.
+        # set -eo pipefail ensures the step fails on any diff or subcommand 
+        # error.
         run: |
           set -eo pipefail
           files=$(git ls-files '*.cpp' '*.hpp')
