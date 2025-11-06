@@ -1,4 +1,10 @@
-"""Basic smoke tests for the Python package."""
+"""Basic smoke tests for the Python package, minimal and fast.
+
+Rationale:
+- It runs without the native SystemC core, exercising only the Python API
+    contract and in-memory bridge. This catches packaging/import issues early.
+- A tiny sequential write/read roundtrip validates event flow and stats.
+"""
 
 from toyssd import NandGeometry, SimConfig, ToySSD, Workload
 
