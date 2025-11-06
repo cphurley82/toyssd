@@ -289,12 +289,19 @@ def lint(ctx) -> None:
 
 
 def _iter_sources() -> list[Path]:
-    """Return all format-able C++ source files (headers and implementation)."""
+    """Return all format-able C++ source files (headers and implementation).
+
+    We scan only the checked-in ``include`` and ``src`` trees to avoid
+    formatting generated code under ``build/``.
+    """
     return [*Path("include").rglob("*.hpp"), *Path("src").rglob("*.cpp")]
 
 
 def _iter_cpp_sources() -> list[str]:
-    """Return C++ implementation files used by clang-tidy and cpplint runs."""
+    """Return C++ implementation files used by clang-tidy and cpplint runs.
+
+    Returned as strings for direct CLI argument concatenation.
+    """
     return [str(path) for path in Path("src").rglob("*.cpp")]
 
 

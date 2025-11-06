@@ -1,4 +1,14 @@
-"""Workload specification helpers for the ToySSD host model."""
+"""Workload specification helpers for the ToySSD host model.
+
+A small DSL that makes it easy to construct common workload patterns.
+
+Rationale:
+- Encapsulates alignment and unit conversions (GiB → blocks) to avoid repeated
+    logic in callers.
+- Makes tests and examples readable and deterministic.
+- Uses LBA units (4 KiB logical blocks by default in the design) to mirror how
+    NVMe presents storage to hosts.
+"""
 
 from __future__ import annotations
 
@@ -16,7 +26,13 @@ class WorkloadKind(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class Workload:
-    """Describes a unit of work to run on the simulated host model."""
+    """Describes a unit of work to run on the simulated host model.
+
+    Immutable and slot-backed so workloads are lightweight to copy and pass
+    around scheduling queues. ``queue_depth`` is included to match host models
+    that may support deeper queues in later phases, even though the initial
+    direct-mapped path uses a depth of 1 for determinism.
+    """
 
     kind: WorkloadKind
     start_lba: int
@@ -26,7 +42,11 @@ class Workload:
     randomness_seed: Optional[int] = None
 
     def to_host_dict(self) -> dict[str, int | str | None]:
-        """Export a dictionary consumable by the host binding."""
+        """Export a dictionary consumable by the host binding.
+
+        Keeping a stable, JSON-like shape here makes it trivial to serialize
+        workloads across the Python/C++ boundary if needed.
+        """
         return {
             "kind": self.kind.value,
             "start_lba": self.start_lba,
@@ -112,6 +132,12 @@ class Workload:
 
     @staticmethod
     def _blocks_from_gib(length_gb: float, block_size_kb: int) -> int:
+        """Convert a GiB-length into a count of LBAs of size ``block_size_kb``.
+
+        Why explicit conversion here: avoids callers duplicating rounding and
+        guards. We floor the result to ensure we never exceed the requested
+        length.
+        """
         if block_size_kb <= 0:
             raise ValueError("block_size_kb must be positive")
         if length_gb < 0:
