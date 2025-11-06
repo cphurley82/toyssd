@@ -11,7 +11,9 @@ from toyssd import NandGeometry, SimConfig, ToySSD, Workload
 
 def test_sequential_write_and_read_roundtrip() -> None:
     geometry = NandGeometry()
-    config = SimConfig(nand_geometry=geometry, enable_visualization=False)
+    config = SimConfig(
+        nand_geometry=geometry, backend="python", enable_visualization=False
+    )
     sim = ToySSD(config)
 
     write = Workload.sequential_write(

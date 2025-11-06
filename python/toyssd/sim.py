@@ -102,26 +102,28 @@ class ToySSD:
     def __init__(self, config: SimConfig) -> None:
         self._config = config
         self._stats = ToySSDStats()
-        self._events: List[dict] = []
-        self._bridge = _InMemoryBridge(config.nand_geometry)
-        self.viz: Optional[Visualization]
-        if config.enable_visualization:
-            self.viz = Visualization(config.nand_geometry)
+        self._events = []
+        if config.backend == "python":
+            self._bridge = _InMemoryBridge(config.nand_geometry)
         else:
-            self.viz = None
+            self._bridge = _SystemCBridge(config.nand_geometry)
+        self.viz = (
+            Visualization(config.nand_geometry) if config.enable_visualization else None
+        )
 
     def run_workload(
         self, workload: Workload, duration_ms: Optional[int] = None
     ) -> None:
         """Run a workload to completion.
 
-        Advance time afterwards in a single step to emulate a synchronous 
+        Advance time afterwards in a single step to emulate a synchronous
         "run then settle" phase.
         """
         events = self._bridge.run_workload(workload)
         self._record_events(events)
         if duration_ms:
             self.step(duration_ms)
+
     def submit_io(self, workload: Workload) -> None:
         """Submit a workload without running it immediately.
 
@@ -130,6 +132,7 @@ class ToySSD:
         """
         events = self._bridge.queue_workload(workload)
         self._record_events(events)
+
     def step(self, duration_ms: int) -> None:
         """Advance the simulation by the requested wall-clock time.
 
@@ -140,6 +143,7 @@ class ToySSD:
             raise ValueError("duration_ms must be positive")
         events = self._bridge.step(duration_ms)
         self._record_events(events)
+
     def drain_events(self) -> list[dict]:
         """Return and clear accumulated events since the last drain.
 
@@ -150,15 +154,18 @@ class ToySSD:
         events = self._events.copy()
         self._events.clear()
         return events
+
     def get_stats(self) -> ToySSDStats:
         """Return cumulative simulator statistics."""
         return self._stats
+
     def shutdown(self) -> None:
         """Gracefully tear down the simulation.
 
         Release native resources and join kernel state.
         """
         self._bridge.shutdown()
+
     def _record_events(self, events: Iterable[dict]) -> None:
         for event in events:
             self._events.append(event)
@@ -182,7 +189,7 @@ class _BridgeProtocol:  # Lightweight structural protocol (no typing import for 
 
 
 class _InMemoryBridge(_BridgeProtocol):
-    """Placeholder bridge that mimics controller <-> NAND behavior in Python.
+    """Placeholder bridge that mimics controller <-> NAND behaviour in Python.
 
     Enables end-to-end API and visualization development before native bindings
     are available, and provides a reference for unit tests that don't depend on
@@ -271,3 +278,28 @@ class _InMemoryBridge(_BridgeProtocol):
             raise CommandError("block_size_kb must be positive")
         counter = (lba + (workload.randomness_seed or 0)) & 0xFF
         return bytes([counter] * block_bytes)
+
+
+class _SystemCBridge(_BridgeProtocol):
+    """Placeholder for the future SystemC-backed bridge.
+
+    Raises a clear error today so users understand the backend isn't wired
+    yet rather than silently falling back.
+    """
+
+    def __init__(self, geometry: NandGeometry) -> None:  # noqa: D401
+        raise SimulationError(
+            "SystemC backend requested but native bindings are not yet available."
+        )
+
+    def queue_workload(self, workload: Workload) -> list[dict]:  # pragma: no cover
+        return []
+
+    def run_workload(self, workload: Workload) -> list[dict]:  # pragma: no cover
+        return []
+
+    def step(self, duration_ms: int) -> list[dict]:  # pragma: no cover
+        return []
+
+    def shutdown(self) -> None:  # pragma: no cover
+        pass
