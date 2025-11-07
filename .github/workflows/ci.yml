@@ -29,9 +29,9 @@ jobs:
           # Prefer the latest macOS ARM64 image.
           - runner: macos-latest
             label: ARM64
-          # TODO: Re-enable Intel testing.
-        #   - runner: macos-15-intel
-        #     label: Intel
+          # Intel macOS runner for x86_64 architecture testing.
+          - runner: macos-13
+            label: Intel
     defaults:
       run:
         shell: bash  # Consistent shell semantics across platforms
