@@ -1,4 +1,4 @@
-# SSD Simulator Design Document
+# toyssd - SSD Simulator Design Document
 
 ## 1. Overview
 
