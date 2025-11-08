@@ -1,0 +1,31 @@
+{
+  "name": "toyssd",
+  "workspaceFolder": "/workspaces/toyssd",
+  "runArgs": [
+    "--init"
+  ],
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": "..",
+    "target": "dev"
+  },
+  "remoteUser": "toyssd",
+  "mounts": [
+    "source=toyssd-ccache,target=/home/toyssd/.cache/ccache,type=volume"
+  ],
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "cmake.configureOnOpen": false
+      },
+      "extensions": [
+        "ms-vscode.cpptools",
+        "ms-python.python",
+        "ms-vscode.cmake-tools",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  }
+}

@@ -37,13 +37,17 @@ Within Docker, Python environments are isolated and immutable once the image is 
 
 ```Dockerfile
 # Install uv once per image using the upstream installer.
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --install-dir /usr/local/bin
+RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
 
-# Resolve project dependencies directly into the system site-packages layer.
-RUN uv sync --frozen --extra dev --system
+# Install the toyssd package (with dev extras) straight into the system interpreter
+# so bind-mounted sources remain editable.
+COPY pyproject.toml ./
+COPY python ./python
+RUN uv pip install --system --editable ./python[dev] \
+ && rm -rf /tmp/toyssd /root/.cache
 ```
 
-`uv sync --system` keeps the repository mounted in editable mode (via the `pyproject.toml` mapping) so changes made in the bind-mounted workspace are immediately visible inside the container—no `pip install .` step copies files into site-packages.
+This keeps the repository bind-mounted and editable while still ensuring every container resolves dependencies through uv. GitHub Actions also uploads the resolved dependency list (`pip freeze` output) as an artifact for auditability.
 
 **Rationale:**
 
@@ -57,9 +61,9 @@ RUN uv sync --frozen --extra dev --system
 
 ## 5. Development Environment
 
-The `dev` image provides the complete toolchain and aligns with the checked-in `.devcontainer/devcontainer.json` so VS Code can open the repo “in container” with zero configuration.
+The `dev` image provides the complete toolchain and aligns with the checked-in [`.devcontainer/devcontainer.json`](../.devcontainer/devcontainer.json) so VS Code can open the repo “in container” with zero configuration.
 
-- SystemC is built once during the image build and installed under `/opt/systemc`. The container sets `TOYSSD_FETCH_SYSTEMC=OFF` and `TOYSSD_SYSTEMC_PREFIX=/opt/systemc`, letting CMake skip `FetchContent` inside Docker while local macOS/Linux builds still download SystemC automatically.
+- SystemC is built once during the image build and installed under `/opt/systemc`. The container sets `TOYSSD_FETCH_SYSTEMC=OFF` and `TOYSSD_SYSTEMC_PREFIX=/opt/systemc`, letting CMake skip `FetchContent` inside Docker while local macOS/Linux builds still download SystemC automatically. We force the SystemC build to use C++20 so the exported `sc_api_version_*` symbol matches our project’s `CMAKE_CXX_STANDARD`, avoiding linker errors when the example/Unit tests link against the prebuilt library.
 - PySysC headers are staged alongside SystemC so both the C++ tests and the future Python bindings resolve cleanly.
 - Tooling: LLVM/Clang, `clang-tidy`, `clang-format`, `cpplint`, Ninja, CMake, `ccache`, `uv`, Invoke, pytest, Ruff.
 - The devcontainer mounts a named `ccache` volume (`toyssd-ccache`) to persist compilation artifacts between sessions.
@@ -73,6 +77,7 @@ GitHub Actions runs CI jobs using the same `toyssd-dev` container to ensure iden
 - Docker layers are cached using `cache-from` and `cache-to` for faster builds.
 - Build artifacts (`ccache`, CMake build outputs) are cached to avoid redundant compilation.
 - Optionally, the `runtime` image is published to GHCR for users who only need to run simulations.
+- Dependency manifest artifact: each CI job runs `pip freeze` (via `uv pip freeze` for macOS and `pip freeze` inside the Docker dev image) and uploads the results so we can trace exactly which versions were used.
 - **Optional SBOM artifact:** produce an SBOM for the built image and upload it as a CI artifact or echo it to logs for provenance, e.g.:
 
 ```yaml

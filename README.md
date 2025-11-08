@@ -70,6 +70,43 @@ uv run invoke lint
 
 Formatting uses clang-format for C++ and Ruff for Python. Linting runs clang-tidy, cpplint, and Ruff checks.
 
+### (Optional) Speed up builds with ccache
+
+Install `ccache` on your host (e.g., `brew install ccache` on macOS or `sudo apt install ccache` on Linux). CMake auto-detects it and sets `CMAKE_{C,CXX}_COMPILER_LAUNCHER` so no extra flags are needed. Inside the dev container we mount a named volume (`toyssd-ccache`) to `/home/toyssd/.cache/ccache` so cached objects persist between sessions—you can replicate that locally by pointing `CCACHE_DIR` to a persistent location if desired.
+
+## Developing with Docker / VS Code Dev Containers
+
+The repo ships with a multi-stage [Dockerfile](Dockerfile) and [`.devcontainer/devcontainer.json`](.devcontainer/devcontainer.json) config. This gives you parity between local development, CI, and runtime images.
+
+### Build/run manually
+
+```bash
+# Build the development image (includes compilers, SystemC, deps)
+docker build --target dev -t toyssd-dev .
+
+# Enter the container with your workspace mounted
+docker run --rm -it \
+  -v "$PWD":/workspaces/toyssd \
+  -v toyssd-ccache:/home/toyssd/.cache/ccache \
+  toyssd-dev \
+  bash
+
+# Inside the container (repo already mounted)
+invoke bootstrap
+invoke build
+invoke test
+```
+
+The runtime stage (`docker build --target runtime -t toyssd:runtime .`) produces a slimmer image for running workloads; see [docs/docker_design.md](docs/docker_design.md) for usage patterns.
+
+### VS Code Dev Container
+
+1. Install the “Dev Containers” extension.
+2. Run “Dev Containers: Reopen in Container”. VS Code builds the `dev` target, mounts the repo at `/workspaces/toyssd`, shares the `toyssd-ccache` volume, and executes [`.devcontainer/post-create.sh`](.devcontainer/post-create.sh) (which only validates that uv/SystemC exist, then calls `invoke bootstrap`).
+3. From there, open a terminal and run `invoke build/test/lint` exactly as you would on the host.
+
+Because both the Dockerfile and CI jobs build SystemC under `/opt/systemc`, your container environment matches GitHub Actions perfectly.
+
 ## Python Usage Example
 
 ```python

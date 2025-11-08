@@ -4,17 +4,18 @@
 # - Delegate orchestration (bootstrap/build/test/lint) to Invoke tasks to keep
 #   CI logic DRY.
 
-name: macos-ci
+name: toyssd-ci
 
+# Trigger on pushes to main + every PR so gate + post-merge builds share coverage.
 on:
   push:
     branches: [main]
   pull_request:
 
 jobs:
-  build:
-    # Display the active arch/label from the matrix for quick identification in
-    # the UI.
+  macos-dev:
+    # Native macOS coverage to ensure the SystemC toolchain builds on both Apple Silicon
+    # and Intel runners (matches local developer environments).
     name: macOS ${{ matrix.label }}
     runs-on: ${{ matrix.runner }}
     env:
@@ -53,7 +54,7 @@ jobs:
       - name: Install clang tools
         # Install recent LLVM utilities (clang-format/clang-tidy) from Homebrew.
         # We still compile using Apple Clang (see env above) for reliable SDK
-        # integration.
+        # integration. A newer LLVM is useful for format/tidy versions.
         run: |
           if ! brew list llvm >/dev/null 2>&1; then
             brew install llvm
@@ -64,7 +65,7 @@ jobs:
 
       - name: Configure macOS SDK
         # Export SDK and arch to prevent header/framework resolution drift and
-        # arch mismatches.
+        # arch mismatches. This mirrors the logic in tools/invoke_tasks.py.
         run: |
           echo "DEVELOPER_DIR=$(xcode-select -p)" >> "$GITHUB_ENV"
           echo "SDKROOT=$(xcrun --sdk macosx --show-sdk-path)" >> "$GITHUB_ENV"
@@ -123,3 +124,68 @@ jobs:
               diff -u "$file" <(clang-format --style=file "$file")
             done
           fi
+
+      - name: Capture Python dependencies
+        if: always()
+        run: |
+          set -euo pipefail
+          output="python-deps-${{ matrix.label }}.txt"
+          if command -v uv >/dev/null 2>&1; then
+            uv pip freeze > "${output}"
+          else
+            echo "uv command unavailable; dependency manifest not captured." > "${output}"
+          fi
+
+      - name: Upload dependency manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-deps-${{ matrix.label }}
+          path: python-deps-${{ matrix.label }}.txt
+
+  docker-dev:
+    # Linux baseline that builds the dev container and exercises the same Invoke
+    # tasks inside it. Guarantees parity between the published Docker image,
+    # VS Code devcontainers, and CI.
+    name: Docker dev container
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build dev container image
+        # Build the multi-stage Dockerfile up to the dev target so we can reuse
+        # the same environment developers get via `docker build --target dev`.
+        run: docker build --target dev -t toyssd-dev:ci .
+
+      - name: Invoke tasks inside container
+        # Run bootstrap/build/test/lint inside the container to ensure the
+        # containerized workflow stays healthy.
+        run: |
+          docker run --rm -u root \
+            -v "${{ github.workspace }}":/workspaces/toyssd \
+            toyssd-dev:ci \
+            bash -lc "cd /workspaces/toyssd && invoke bootstrap && invoke build && invoke test && invoke lint"
+
+      - name: Capture dependencies from dev container
+        if: always()
+        run: |
+          set -euo pipefail
+          output="python-deps-docker.txt"
+          if docker image inspect toyssd-dev:ci >/dev/null 2>&1; then
+            docker run --rm toyssd-dev:ci bash -lc "python -m pip freeze" > "${output}"
+          else
+            echo "toyssd-dev:ci image missing; dependency manifest not captured." > "${output}"
+          fi
+
+      - name: Upload docker dependency manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-deps-docker
+          path: python-deps-docker.txt
