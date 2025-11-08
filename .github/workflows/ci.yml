@@ -30,7 +30,7 @@ jobs:
           - runner: macos-latest
             label: ARM64
           # Intel macOS runner for x86_64 architecture testing.
-          - runner: macos-13
+          - runner: macos-15-intel
             label: Intel
     defaults:
       run:
