@@ -20,7 +20,7 @@ function(toyssd_enable_warnings target)
         # -Wconversion -Wsign-conversion: highlight implicit/narrowing casts and
         #   signed/unsigned mismatches that often bite at boundaries.
         # -Wdeprecated: surface uses of deprecated APIs early so we can migrate.
-        # TODO: Increase warnings to maximum sensible set.
+        # TODO(cphurley): Increase warnings to maximum sensible set.
         target_compile_options(
             ${target}
             PRIVATE

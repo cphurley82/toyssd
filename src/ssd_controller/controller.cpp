@@ -1,4 +1,10 @@
 // Copyright toyssd contributors
+// SPDX-License-Identifier: MIT
+//
+// File: controller.cpp
+// Brief: Implements the Controller model bridging host NVMe-like commands to
+//        NAND operations using blocking transport. Performs basic validation
+//        and LBA -> Nand mapping.
 
 #include <algorithm>
 
@@ -23,6 +29,7 @@ Controller::Controller(const sc_core::sc_module_name& name,
 
 void Controller::b_transport(tlm::tlm_generic_payload& payload,
                              sc_core::sc_time& delay) {
+  // Expect an NvmeCommandExtension to accompany all host transactions.
   auto* command = payload.get_extension<NvmeCommandExtension>();
   if (command == nullptr) {
     payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
@@ -48,6 +55,7 @@ void Controller::b_transport(tlm::tlm_generic_payload& payload,
 void Controller::handle_write(tlm::tlm_generic_payload& payload,
                               NvmeCommandExtension& command,
                               sc_core::sc_time& delay) {
+  // Validate payload presence; we don't support zero-length writes.
   if (payload.get_data_ptr() == nullptr || payload.get_data_length() == 0) {
     command.status = NvmeStatus::INVALID_FIELD;
     payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
@@ -102,6 +110,7 @@ void Controller::handle_write(tlm::tlm_generic_payload& payload,
 void Controller::handle_read(tlm::tlm_generic_payload& payload,
                              NvmeCommandExtension& command,
                              sc_core::sc_time& delay) {
+  // Validate read buffer presence and size.
   if (payload.get_data_ptr() == nullptr || payload.get_data_length() == 0) {
     command.status = NvmeStatus::INVALID_FIELD;
     payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
@@ -154,6 +163,7 @@ void Controller::handle_read(tlm::tlm_generic_payload& payload,
 }
 
 NandPhysicalAddress Controller::map_lba(uint64_t lba) const {
+  // Compute a linear page index, then derive die/block/page using geometry.
   const uint64_t page_index = lba / logical_blocks_per_page_;
   const uint64_t pages_per_die =
       static_cast<uint64_t>(geometry_.blocks_per_die) *

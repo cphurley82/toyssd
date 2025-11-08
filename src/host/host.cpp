@@ -1,4 +1,9 @@
 // Copyright toyssd contributors
+// SPDX-License-Identifier: MIT
+//
+// File: host.cpp
+// Brief: Implements the Host SystemC model that issues NVMe-like transactions
+//        to the controller over a blocking-transport TLM socket.
 
 #include "toyssd/host.hpp"
 
@@ -8,6 +13,8 @@
 
 namespace toyssd {
 
+// Submits a write to the controller with parameter validation and error
+// translation to C++ exceptions suitable for tests.
 void Host::submit_write(uint64_t lba, const std::vector<uint8_t>& data,
                         DataPattern pattern) {
   if (data.empty()) {
@@ -48,6 +55,8 @@ void Host::submit_write(uint64_t lba, const std::vector<uint8_t>& data,
   }
 }
 
+// Submits a read to the controller and returns the received buffer. Performs
+// basic argument validation and converts controller failures to exceptions.
 std::vector<uint8_t> Host::submit_read(uint64_t lba, uint16_t length_blocks) {
   if (length_blocks == 0) {
     throw std::invalid_argument("length_blocks must be positive");
@@ -89,6 +98,9 @@ std::vector<uint8_t> Host::submit_read(uint64_t lba, uint16_t length_blocks) {
   return buffer;
 }
 
+// Common transport helper used by read/write paths. Blocks until completion
+// and checks TLM response status; waits on delay if a non-zero delay is set to
+// preserve deterministic sequencing.
 void Host::send_payload(tlm::tlm_generic_payload& payload,
                         NvmeCommandExtension& extension,
                         sc_core::sc_time& delay) {

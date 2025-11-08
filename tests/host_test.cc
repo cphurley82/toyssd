@@ -1,3 +1,9 @@
+// Copyright toyssd contributors
+// SPDX-License-Identifier: MIT
+//
+// File: host_test.cc
+// Brief: Tests host-side parameter validation for write alignment.
+
 #include <gtest/gtest.h>
 
 #include <stdexcept>

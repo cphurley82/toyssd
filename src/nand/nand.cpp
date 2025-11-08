@@ -1,4 +1,9 @@
 // Copyright toyssd contributors
+// SPDX-License-Identifier: MIT
+//
+// File: nand.cpp
+// Brief: Implements a NAND array as a TLM target. Storage is modeled with an
+//        in-memory map keyed by a compact page key.
 
 #include "toyssd/nand.hpp"
 
@@ -8,8 +13,11 @@
 namespace toyssd {
 
 namespace {
+// Bit layout for page key construction:
+// [ die (>=20 bits) | block (20 bits) | page (20 bits) ]
 constexpr uint64_t kDieShiftBits = 40;
 constexpr uint64_t kBlockShiftBits = 20;
+// 20-bit mask for block/page extraction.
 constexpr uint64_t kFieldMask = 0xFFFFF;
 }  // namespace
 
@@ -54,6 +62,7 @@ uint64_t Nand::make_page_key(uint32_t die, uint32_t block, uint32_t page) {
          static_cast<uint64_t>(page);
 }
 
+// Programs a full page from the payload buffer into the backing map.
 void Nand::handle_program(tlm::tlm_generic_payload& payload,
                           NandCommandExtension& command) {
   if (payload.get_data_ptr() == nullptr || payload.get_data_length() == 0) {
@@ -69,6 +78,7 @@ void Nand::handle_program(tlm::tlm_generic_payload& payload,
   payload.set_response_status(tlm::TLM_OK_RESPONSE);
 }
 
+// Reads a full page into the provided payload buffer; errors if page missing.
 void Nand::handle_read(tlm::tlm_generic_payload& payload,
                        NandCommandExtension& command) {
   if (payload.get_data_ptr() == nullptr || payload.get_data_length() == 0) {
@@ -90,6 +100,7 @@ void Nand::handle_read(tlm::tlm_generic_payload& payload,
   payload.set_response_status(tlm::TLM_OK_RESPONSE);
 }
 
+// Erases an entire block by removing all stored page entries for the block.
 void Nand::handle_erase(NandCommandExtension& command) {
   std::vector<uint64_t> keys_to_remove;
   keys_to_remove.reserve(geometry_.pages_per_block);
