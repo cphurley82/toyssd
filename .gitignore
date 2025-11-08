@@ -16,3 +16,6 @@ cmake-build-*/
 .venv/
 .env/
 uv.lock
+
+# macOS files
+.DS_Store
