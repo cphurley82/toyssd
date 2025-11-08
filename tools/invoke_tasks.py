@@ -136,14 +136,39 @@ def _compiler_env(**overrides: str) -> dict[str, str]:
     return env
 
 
+def _cmake_systemc_flags() -> str:
+    """Return CMake flags that reuse a pre-installed SystemC, if provided.
+
+    The Docker/devcontainer flow installs SystemC under /opt/systemc and sets
+    TOYSSD_SYSTEMC_PREFIX so local configuration can skip FetchContent.
+    """
+    prefix = os.environ.get("TOYSSD_SYSTEMC_PREFIX")
+    if not prefix:
+        return ""
+    return (
+        f" -DTOYSSD_FETCH_SYSTEMC=OFF"
+        f" -DTOYSSD_SYSTEMC_PREFIX={shlex.quote(prefix)}"
+    )
+
+
 def _python() -> str:
     """Resolve the Python interpreter path used for running Python tools/tests.
 
     Prefer ``$PYTHON`` if the user or CI provided one (e.g., a virtualenv
-    interpreter), otherwise fall back to the current interpreter for this
-    process (``sys.executable``), and as a last resort "python3".
+    interpreter). Otherwise prefer the local `.venv` created by ``uv sync`` to
+    keep tooling aligned with the resolved dependencies, and fall back to the
+    current interpreter for this process (``sys.executable``) or "python3".
     """
-    return os.environ.get("PYTHON", sys.executable or "python3")
+    if python := os.environ.get("PYTHON"):
+        return python
+    venv = ROOT / ".venv"
+    if platform.system() == "Windows":
+        candidate = venv / "Scripts" / "python.exe"
+    else:
+        candidate = venv / "bin" / "python3"
+    if candidate.exists():
+        return str(candidate)
+    return sys.executable or "python3"
 
 
 @task
@@ -177,7 +202,8 @@ def bootstrap(ctx) -> None:
     # applicable. Enabling tests here ensures dependencies for unit tests are
     # also downloaded/configured (e.g., googletest via CMake's FetchContent).
     ctx.run(
-        f"cmake -S {ROOT} -B {debug_dir} -DCMAKE_BUILD_TYPE=Debug{_cmake_sysroot_flag()}{_cmake_arch_flag()} -DTOYSSD_BUILD_TESTS=ON",
+        f"cmake -S {ROOT} -B {debug_dir} -DCMAKE_BUILD_TYPE=Debug"
+        f"{_cmake_sysroot_flag()}{_cmake_arch_flag()}{_cmake_systemc_flags()} -DTOYSSD_BUILD_TESTS=ON",
         pty=True,
         env=_compiler_env(),
     )
@@ -196,7 +222,8 @@ def build(ctx, config: str = "Debug") -> None:
     # Always generate with explicit sysroot/arch flags on macOS to keep build
     # artifacts consistent across machines and CI.
     ctx.run(
-        f"cmake -S {ROOT} -B {build_dir} -DCMAKE_BUILD_TYPE={config}{_cmake_sysroot_flag()}{_cmake_arch_flag()} -DTOYSSD_BUILD_TESTS=ON",
+        f"cmake -S {ROOT} -B {build_dir} -DCMAKE_BUILD_TYPE={config}"
+        f"{_cmake_sysroot_flag()}{_cmake_arch_flag()}{_cmake_systemc_flags()} -DTOYSSD_BUILD_TESTS=ON",
         pty=True,
         env=_compiler_env(),
     )
@@ -264,7 +291,8 @@ def lint(ctx) -> None:
     build_dir = BUILD_DIR / "debug"
     build_dir.mkdir(parents=True, exist_ok=True)
     ctx.run(
-        f"cmake -S {ROOT} -B {build_dir} -DCMAKE_BUILD_TYPE=Debug{_cmake_sysroot_flag()}{_cmake_arch_flag()} -DTOYSSD_BUILD_TESTS=ON",
+        f"cmake -S {ROOT} -B {build_dir} -DCMAKE_BUILD_TYPE=Debug"
+        f"{_cmake_sysroot_flag()}{_cmake_arch_flag()}{_cmake_systemc_flags()} -DTOYSSD_BUILD_TESTS=ON",
         pty=True,
         env=_compiler_env(),
     )

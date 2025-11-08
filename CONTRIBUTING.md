@@ -70,8 +70,8 @@ These practices complement the language-specific guidance below and are reinforc
 
 ## Documentation
 
-- Update `docs/ssd_sim_design.md` when design decisions change.
-- Extend `README.md` for large features that affect onboarding.
+- Update [docs/ssd_sim_design.md](docs/ssd_sim_design.md) when design decisions change.
+- Extend [README.md](README.md) for large features that affect onboarding.
 - Include docstrings for new Python APIs and inline comments for non-obvious C++ logic.
 
 ## Pull Request Checklist
@@ -90,7 +90,7 @@ These practices complement the language-specific guidance below and are reinforc
 
 ## Release Notes
 
-We maintain a running changelog in the design doc until a formal `CHANGELOG.md` is added. Call out user-facing changes in your PR description.
+We maintain a running changelog in the design doc until a formal [CHANGELOG.md](CHANGELOG.md) is added. Call out user-facing changes in your PR description.
 
 ## Questions?
 

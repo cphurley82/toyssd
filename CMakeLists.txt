@@ -25,6 +25,14 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # forcing consumers of the library to adopt the same policy.
 option(TOYSSD_BUILD_TESTS "Build toyssd unit tests" ON)
 option(TOYSSD_ENABLE_WARNINGS "Enable strict compiler warnings" ON)
+# Allow Docker/packagers to provide their own SystemC installation instead of
+# downloading it during configuration.
+option(TOYSSD_FETCH_SYSTEMC "Download SystemC via FetchContent" ON)
+set(
+    TOYSSD_SYSTEMC_PREFIX
+    ""
+    CACHE PATH "Pre-installed SystemC prefix to reuse when TOYSSD_FETCH_SYSTEMC=OFF"
+)
 
 # Add our custom CMake modules to the search path (e.g., warnings setup).
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
@@ -57,14 +65,30 @@ if(APPLE)
 endif()
 
 # --- Third-party: SystemC ---
-# We fetch and build a specific SystemC release for reproducibility.
-FetchContent_Declare(
-    systemc
-    URL https://github.com/accellera-official/systemc/archive/refs/tags/3.0.2.tar.gz
-    URL_HASH SHA256=9b3693ed286aab958b9e5d79bb0ad3bc523bbc46931100553275352038f4a0c4
-)
-
-FetchContent_MakeAvailable(systemc)
+# Default to fetching SystemC (good for local developer machines), but allow
+# Docker or distro builds to point at a pre-installed tree instead.
+if(TOYSSD_FETCH_SYSTEMC)
+    FetchContent_Declare(
+        systemc
+        URL https://github.com/accellera-official/systemc/archive/refs/tags/3.0.2.tar.gz
+        URL_HASH SHA256=9b3693ed286aab958b9e5d79bb0ad3bc523bbc46931100553275352038f4a0c4
+    )
+    FetchContent_MakeAvailable(systemc)
+else()
+    if(TOYSSD_SYSTEMC_PREFIX)
+        list(PREPEND CMAKE_PREFIX_PATH "${TOYSSD_SYSTEMC_PREFIX}")
+    endif()
+    # SystemC 3.0 exports a SystemCLanguage config rather than SystemCConfig.
+    # Try the canonical package name first (covers distro builds that ship one),
+    # then fall back to the SystemCLanguage config installed in our Docker image.
+    find_package(SystemC CONFIG QUIET)
+    if(NOT SystemC_FOUND)
+        find_package(SystemCLanguage CONFIG REQUIRED)
+    endif()
+    if(NOT TARGET SystemC::systemc)
+        message(FATAL_ERROR "SystemC package did not export the SystemC::systemc target.")
+    endif()
+endif()
 
 # --- Third-party: GoogleTest ---
 # Use a pinned GTest for stable test behavior. The "shared CRT" toggle matters
@@ -105,6 +129,26 @@ target_include_directories(
     INTERFACE
         ${pysysc_SOURCE_DIR}
 )
+
+# Prefer ccache automatically when it is available to speed up container and
+# local iterative builds. Respect any launcher the user already configured.
+find_program(TOYSSD_CCACHE_PROGRAM ccache)
+if(TOYSSD_CCACHE_PROGRAM)
+    if(NOT CMAKE_C_COMPILER_LAUNCHER)
+        set(
+            CMAKE_C_COMPILER_LAUNCHER
+            "${TOYSSD_CCACHE_PROGRAM}"
+            CACHE STRING "C compiler launcher" FORCE
+        )
+    endif()
+    if(NOT CMAKE_CXX_COMPILER_LAUNCHER)
+        set(
+            CMAKE_CXX_COMPILER_LAUNCHER
+            "${TOYSSD_CCACHE_PROGRAM}"
+            CACHE STRING "C++ compiler launcher" FORCE
+        )
+    endif()
+endif()
 
 # Include headers in the library target for IDEs and installation exports.
 # GLOB_RECURSE is acceptable here because the project is small and we enable
