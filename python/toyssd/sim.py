@@ -14,7 +14,7 @@ Note: The current implementation routes through an in-memory Python bridge to
 stand in for the C++ SystemC core while the bindings are developed. The
 public API is designed to remain stable when the bridge is replaced by real
 bindings.
-TODO: Update this doc when the SystemC bridge is implemented.
+TODO(cphurley): Update this doc when the SystemC bridge is implemented.
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ class SimulationError(ToySSDException):
 
     In a real SystemC-backed run this would wrap non-OK TLM responses or kernel
     errors. It remains for API completeness in the Python bridge.
-    TODO: Update this doc when the SystemC bridge is implemented.
+    TODO(cphurley): Update this doc when the SystemC bridge is implemented.
     """
 
 

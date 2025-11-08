@@ -1,3 +1,10 @@
+// Copyright toyssd contributors
+// SPDX-License-Identifier: MIT
+//
+// File: controller_test.cc
+// Brief: Tests host/controller/nand write-read roundtrip and capacity error
+//        surfacing via exceptions.
+
 #include <gtest/gtest.h>
 
 #include <numeric>

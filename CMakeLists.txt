@@ -109,7 +109,7 @@ target_include_directories(
 # Include headers in the library target for IDEs and installation exports.
 # GLOB_RECURSE is acceptable here because the project is small and we enable
 # CONFIGURE_DEPENDS to refresh on new headers when re-configuring.
-# TODO: Switch to explicit listing.
+# TODO(cphurley): Switch to explicit listing.
 file(GLOB_RECURSE TOYSSD_HEADERS CONFIGURE_DEPENDS "include/toyssd/*.hpp")
 
 # Primary library sources grouped by subsystem.

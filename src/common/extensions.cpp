@@ -1,4 +1,9 @@
 // Copyright toyssd contributors
+// SPDX-License-Identifier: MIT
+//
+// File: extensions.cpp
+// Brief: Implements tlm_extension clone/copy hooks for NVMe and NAND command
+//        extensions.
 
 #include "toyssd/extensions.hpp"
 

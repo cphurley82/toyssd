@@ -1,3 +1,9 @@
+// Copyright toyssd contributors
+// SPDX-License-Identifier: MIT
+//
+// File: nand_test.cc
+// Brief: Tests NAND PROGRAM, ERASE, and READ failure semantics after erase.
+
 #include <gtest/gtest.h>
 
 #include <memory>

@@ -34,8 +34,8 @@ class NandGeometry:
     page_size_bytes: int = 16_384
     oob_size_bytes: int = 1024
     planes_per_die: int = 2
-    # TODO: add multi-level cell support.
-    # TODO: decide on better handling for planes, should we use block number to
+    # TODO(cphurley): add multi-level cell support.
+    # TODO(cphurley): decide on better handling for planes, should we use block number to
     #    determine plane or make planes first-class in the geometry?
 
     @property
