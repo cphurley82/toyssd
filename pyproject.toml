@@ -48,7 +48,9 @@ dev = [
   # C++ style checks to keep c++ code tidy
   "cpplint>=1.6.1",
   # fast Python linter/formatter (complements black style)
-  "ruff>=0.2.0"
+  "ruff>=0.2.0",
+  # markdown linter for documentation consistency
+  "pymarkdownlnt>=0.9.13"
 ]
 
 [build-system]
