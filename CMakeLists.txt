@@ -151,10 +151,14 @@ if(TOYSSD_CCACHE_PROGRAM)
 endif()
 
 # Include headers in the library target for IDEs and installation exports.
-# GLOB_RECURSE is acceptable here because the project is small and we enable
-# CONFIGURE_DEPENDS to refresh on new headers when re-configuring.
-# TODO(cphurley): Switch to explicit listing.
-file(GLOB_RECURSE TOYSSD_HEADERS CONFIGURE_DEPENDS "include/toyssd/*.hpp")
+# List them explicitly so build graph changes are intentional and reviewable.
+set(TOYSSD_HEADERS
+    include/toyssd/extensions.hpp
+    include/toyssd/geometry.hpp
+    include/toyssd/host.hpp
+    include/toyssd/nand.hpp
+    include/toyssd/ssd_controller.hpp
+)
 
 # Primary library sources grouped by subsystem.
 set(TOYSSD_SOURCES
