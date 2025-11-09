@@ -200,12 +200,12 @@ All models follow Google C++ style, compile under C++20, and use blocking transp
 Define two custom blocking transport payload extensions:
 
 1. `NvmeCommandExtension`
-    - Fields: command_id, opcode, namespace_id, lba, length, pattern, pattern_seed, status.
-    - Used in host ↔ controller transport.
+   - Fields: command_id, opcode, namespace_id, lba, length, pattern, pattern_seed, status.
+   - Used in host ↔ controller transport.
 
 2. `NandCommandExtension`
-    - Fields: command_type (READ/PROGRAM/ERASE/MARK_BAD), channel, die, block, page, plane, pattern, pattern_seed, length_bytes, status.
-    - Used in controller ↔ NAND transport.
+   - Fields: command_type (READ/PROGRAM/ERASE/MARK_BAD), channel, die, block, page, plane, pattern, pattern_seed, length_bytes, status.
+   - Used in controller ↔ NAND transport.
 
 Both extensions derive from `tlm::tlm_extension` and include clone/copy hooks. Payloads do not model timing annotations beyond simple blocking delays applied by the callee.
 
@@ -436,20 +436,20 @@ struct NandLatencyConfig {
 - Integrate `gcovr` to generate unified C++ code coverage reports; expose results via Invoke (`invoke coverage`) and archive outputs for CI.
 - Treat compiler warnings as errors for all internal targets (`-Werror` via `target_compile_options`), while leaving third-party dependencies at their default warning settings.
 - **Formatting & Static Analysis**:
-    - Maintain `.clang-format` aligned with Google C++ style.
-    - Configure `clang-tidy` targets in CMake (`CMAKE_CXX_CLANG_TIDY`).
-    - Integrate `cpplint` via Invoke to enforce Google style specifics.
-    - Python: leverage `pylint` plus `ruff` for formatting and linting while conforming to Google Python style.
-    - Packaging: use `scikit-build-core` to integrate CMake builds with Python packaging; configure package-dir to `python/`.
-    - Reproducibility: pin PySysC to a specific commit hash via `FetchContent`.
+  - Maintain `.clang-format` aligned with Google C++ style.
+  - Configure `clang-tidy` targets in CMake (`CMAKE_CXX_CLANG_TIDY`).
+  - Integrate `cpplint` via Invoke to enforce Google style specifics.
+  - Python: leverage `pylint` plus `ruff` for formatting and linting while conforming to Google Python style.
+  - Packaging: use `scikit-build-core` to integrate CMake builds with Python packaging; configure package-dir to `python/`.
+  - Reproducibility: pin PySysC to a specific commit hash via `FetchContent`.
 
 ## 7. Testing Strategy
 
 - **C++ Unit Tests**:
-    - Each model resides in `src/<component>` with a matching `tests/<component>_test.cc`.
-    - Use `gtest_main` and the [tlm2-gtestbench](https://github.com/cphurley82/tlm2-gtestbench) patterns to instantiate SystemC kernels inside GoogleTest fixtures.
-    - Scope the SystemC kernel lifecycle per test or per test suite to avoid kernel reuse and interference between tests.
-    - Provide mocks/stubs for downstream components when testing in isolation (e.g., host tests stub controller responses).
+  - Each model resides in `src/<component>` with a matching `tests/<component>_test.cc`.
+  - Use `gtest_main` and the [tlm2-gtestbench](https://github.com/cphurley82/tlm2-gtestbench) patterns to instantiate SystemC kernels inside GoogleTest fixtures.
+  - Scope the SystemC kernel lifecycle per test or per test suite to avoid kernel reuse and interference between tests.
+  - Provide mocks/stubs for downstream components when testing in isolation (e.g., host tests stub controller responses).
 
 - **Python Tests**:
   - Use `pytest` for API-level validation (instantiation, simple I/O submission, visualization snapshot).
@@ -460,11 +460,11 @@ struct NandLatencyConfig {
   - Validate visualization output via deterministic text frames.
 
 - **Continuous Verification**:
-    - GitHub Actions workflow runs on push/PR to execute Invoke build, test, lint, format-check, and coverage tasks.
-    - Cache heavy artifacts (SystemC, CMake, ccache) to reduce CI time.
-    - OS matrix: ubuntu-latest and macos-latest; install `clang-format`/`clang-tidy` on macOS via Homebrew.
-    - Track `gcovr` coverage reports in CI dashboards; begin with a lower threshold (e.g., 60–70%) and ratchet up as features stabilize.
-    - Determinism: set a default global seed; verify golden visualization frames under CI.
+  - GitHub Actions workflow runs on push/PR to execute Invoke build, test, lint, format-check, and coverage tasks.
+  - Cache heavy artifacts (SystemC, CMake, ccache) to reduce CI time.
+  - OS matrix: ubuntu-latest and macos-latest; install `clang-format`/`clang-tidy` on macOS via Homebrew.
+  - Track `gcovr` coverage reports in CI dashboards; begin with a lower threshold (e.g., 60–70%) and ratchet up as features stabilize.
+  - Determinism: set a default global seed; verify golden visualization frames under CI.
 
 ## 8. Package & Repository Layout
 
@@ -506,46 +506,46 @@ toyssd/
 ## 10. Initial Milestones
 
 1. **Infrastructure**:
-    - Set up CMake build with FetchContent for SystemC 3.0.2, PySysC, GoogleTest.
-    - Configure uv environment, Invoke tasks, clang-format, clang-tidy, cpplint.
-    - Vendor PySysC with hash validation.
-    - Smoke test: Build SystemC hello_world and verify PySysC bindings load.
+   - Set up CMake build with FetchContent for SystemC 3.0.2, PySysC, GoogleTest.
+   - Configure uv environment, Invoke tasks, clang-format, clang-tidy, cpplint.
+   - Vendor PySysC with hash validation.
+   - Smoke test: Build SystemC hello_world and verify PySysC bindings load.
 
 2. **Model Skeletons**:
-    - Implement host, controller, and NAND classes with baseline blocking transport interactions.
-    - Direct-mapped addressing in controller (LBA → fixed physical address).
-    - Add GoogleTests verifying socket connectivity and basic read/write paths.
-    - Validation: Host can write/read back single page successfully.
+   - Implement host, controller, and NAND classes with baseline blocking transport interactions.
+   - Direct-mapped addressing in controller (LBA → fixed physical address).
+   - Add GoogleTests verifying socket connectivity and basic read/write paths.
+   - Validation: Host can write/read back single page successfully.
 
 3. **Visualization MVP**:
-    - Render single-drive geometry with sequential write workload, mimic Norton Disk Doctor style.
-    - Use a vector-based event buffer drained after each `sc_start()` for event propagation from SystemC to Python.
-    - ASCII rendering with block state colors and legend.
-    - Validation: Snapshot matches expected output for 100-write workload.
+   - Render single-drive geometry with sequential write workload, mimic Norton Disk Doctor style.
+   - Use a vector-based event buffer drained after each `sc_start()` for event propagation from SystemC to Python.
+   - ASCII rendering with block state colors and legend.
+   - Validation: Snapshot matches expected output for 100-write workload.
 
 4. **FTL Implementation**:
-    - Replace direct mapping with dynamic page-level L2P table.
-    - Implement block allocator with wear-leveling (select lowest erase count).
-    - Add garbage collection: trigger at free block threshold, compact valid pages.
-    - Configure 7% over-provisioning.
-    - GoogleTests: Verify GC correctness, wear-leveling distribution, space reclamation.
-    - Validation: 10GB write to 1GB drive with uniform distribution of erase counts.
+   - Replace direct mapping with dynamic page-level L2P table.
+   - Implement block allocator with wear-leveling (select lowest erase count).
+   - Add garbage collection: trigger at free block threshold, compact valid pages.
+   - Configure 7% over-provisioning.
+   - GoogleTests: Verify GC correctness, wear-leveling distribution, space reclamation.
+   - Validation: 10GB write to 1GB drive with uniform distribution of erase counts.
 
 5. **Integration Demo**:
-    - Python script demonstrating realistic workload: random writes with overwrites to trigger GC.
-    - Visualization shows GC activity, block state transitions, wear leveling progress.
-    - Export metrics: write amplification, GC overhead, erase count histogram.
+   - Python script demonstrating realistic workload: random writes with overwrites to trigger GC.
+   - Visualization shows GC activity, block state transitions, wear leveling progress.
+   - Export metrics: write amplification, GC overhead, erase count histogram.
 
 6. **Extended Features**:
-    - Error injection: configurable program/erase failure rates.
-    - Bad block handling: remap on persistent failures, update bad block table.
-    - Config-driven workloads: FIO-like DSL for complex I/O patterns.
-    - Fault injection tests: Verify recovery from bad blocks and write failures.
+   - Error injection: configurable program/erase failure rates.
+   - Bad block handling: remap on persistent failures, update bad block table.
+   - Config-driven workloads: FIO-like DSL for complex I/O patterns.
+   - Fault injection tests: Verify recovery from bad blocks and write failures.
 
 7. **Firmware Integration Roadmap** (Research Phase):
-    - Prototype DBT-RISE RISC-V core integration as separate research spike.
-    - Design controller backend interface to support firmware command processing.
-    - Evaluate Zephyr RTOS boot flow requirements and SystemC integration strategy.
+   - Prototype DBT-RISE RISC-V core integration as separate research spike.
+   - Design controller backend interface to support firmware command processing.
+   - Evaluate Zephyr RTOS boot flow requirements and SystemC integration strategy.
 
 ## 11. Future Enhancements
 
