@@ -189,3 +189,26 @@ jobs:
         with:
           name: python-deps-docker
           path: python-deps-docker.txt
+
+  codex-scripts:
+    # Ensure the Codex setup/maintenance scripts stay healthy on a clean Ubuntu
+    # image that mirrors Codex (GitHub's ubuntu-24.04 runner).
+    name: Codex setup scripts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: read
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Run setup + maintenance scripts
+        env:
+          SYSTEMC_BUILD_JOBS: "2"
+        run: |
+          set -euo pipefail
+          ./run/setup.sh
+          ./run/maintenance_setup.sh
