@@ -279,8 +279,22 @@ def format(ctx) -> None:
 
 
 @task
+def lint_markdown(ctx) -> None:
+    """Run markdown linter on all documentation files.
+
+    Uses pymarkdownlnt to check markdown files for style issues, broken links,
+    and structural problems. This helps maintain consistent, readable
+    documentation across the project.
+    """
+    md_files = " ".join(shlex.quote(str(path)) for path in _iter_markdown_files())
+    config_path = shlex.quote(str(ROOT / ".pymarkdown.json"))
+    if md_files:
+        ctx.run(f"{_python()} -m pymarkdown -c {config_path} scan {md_files}", pty=True)
+
+
+@task
 def lint(ctx) -> None:
-    """Run C++ and Python linters: clang-tidy, cpplint, and ruff.
+    """Run C++, Python, and Markdown linters: clang-tidy, cpplint, ruff, and pymarkdown.
 
     Why both static analyzers (clang-tidy) and style linters (cpplint/ruff):
     they catch different classes of issues. We configure a Debug build first to
@@ -313,6 +327,8 @@ def lint(ctx) -> None:
     )
     ctx.run("cpplint --recursive include src", pty=True)
     ctx.run(f"{_python()} -m ruff check python", pty=True)
+    # Run markdown linting on all documentation files.
+    lint_markdown(ctx)
 
 
 @task
@@ -351,6 +367,23 @@ def _iter_cpp_sources() -> list[str]:
     return [str(path) for path in Path("src").rglob("*.cpp")]
 
 
+def _iter_markdown_files() -> list[Path]:
+    """Return all markdown documentation files for linting.
+
+    Scans the root directory and docs/ subdirectory for .md files to maintain
+    consistent documentation style.
+    """
+    md_files = []
+    # Root-level markdown files
+    for path in ROOT.glob("*.md"):
+        md_files.append(path)
+    # Documentation directory markdown files
+    docs_dir = ROOT / "docs"
+    if docs_dir.exists():
+        md_files.extend(docs_dir.rglob("*.md"))
+    return md_files
+
+
 ns = Collection()
 # Expose tasks under the default namespace so developers can run e.g.:
 #   invoke bootstrap
@@ -361,4 +394,5 @@ ns.add_task(build)
 ns.add_task(test)
 ns.add_task(format)
 ns.add_task(lint)
+ns.add_task(lint_markdown)
 ns.add_task(clean)

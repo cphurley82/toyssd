@@ -49,11 +49,11 @@ else:
 ## 4) Invoke tasks (entrypoint for bootstrap/build/test/lint)
 
 ```bash
-invoke bootstrap  # Install Python deps and configure an initial Debug CMake build tree.
-invoke format     # Auto-format C++/Python
-invoke lint       # Run all linters
-invoke build      # Configure & build project (CMake)
-invoke test       # Run tests and examples
+invoke bootstrap       # Install Python deps and configure an initial Debug CMake build tree.
+invoke format          # Auto-format C++/Python
+invoke lint            # Run all linters (C++, Python, Markdown)
+invoke build           # Configure & build project (CMake)
+invoke test            # Run tests and examples
 ```
 
 > Ensure these tasks exist in [invoke_tasks.py](./tools/invoke_tasks.py) or [tasks.py](./tasks.py).
@@ -89,6 +89,7 @@ invoke test
 
 - **C++ / SystemC:** `clang-format`, `clang-tidy`, `cpplint`, and strict compiler warnings  
 - **Python:** `ruff` (formatter + linter; configured in [pyproject.toml](./pyproject.toml))  
+- **Markdown:** `pymarkdownlnt` (linter for documentation; configured in [.pymarkdown.json](./.pymarkdown.json))  
 
 ---
 

@@ -7,7 +7,7 @@
 - **Hybrid Python/SystemC stack** – Invoke the SystemC kernel directly from Python via PySysC bindings.
 - **Composable models** – Host, controller, and NAND building blocks communicate over blocking-transport TLM sockets.
 - **Deterministic execution** – Blocking transport only (no temporal decoupling) for reproducible workloads.
-- **Rich tooling** – CMake + scikit-build-core, GoogleTest, Invoke automation, uv for dependencies, clang-format/tidy/cpplint.
+- **Rich tooling** – CMake + scikit-build-core, GoogleTest, Invoke automation, uv for dependencies, clang-format/tidy/cpplint, ruff, pymarkdownlnt.
 - **Visualization hook** – ASCII defrag-style renderer driven by events emitted from the NAND model.
 
 ## Repository Layout
@@ -68,7 +68,7 @@ uv run invoke format
 uv run invoke lint
 ```
 
-Formatting uses clang-format for C++ and Ruff for Python. Linting runs clang-tidy, cpplint, and Ruff checks.
+Formatting uses clang-format for C++ and Ruff for Python. Linting runs clang-tidy, cpplint, Ruff checks, and pymarkdownlnt for documentation.
 
 ### Clean
 
