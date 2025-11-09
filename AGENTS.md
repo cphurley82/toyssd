@@ -54,6 +54,7 @@ invoke format     # Auto-format C++/Python
 invoke lint       # Run all linters
 invoke build      # Configure & build project (CMake)
 invoke test       # Run tests and examples
+invoke clean      # Remove build artifacts (build/ directory)
 ```
 
 > Ensure these tasks exist in [invoke_tasks.py](./tools/invoke_tasks.py) or [tasks.py](./tasks.py).
