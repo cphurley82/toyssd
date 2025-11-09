@@ -37,7 +37,7 @@
 
 Decision rule:
 
-```
+```python
 if system == "Darwin":
     use: uv run invoke <task>
 else:
