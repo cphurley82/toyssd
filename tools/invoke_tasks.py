@@ -4,8 +4,8 @@ This task collection standardizes common developer actions (bootstrap, build,
 test, format, lint) across platforms. The script intentionally prefers
 deterministic, reproducible configuration.
 
-Every task runs commands with a merged environment that includes the necessary 
-compiler and SDK hints. Tasks are designed to be idempotent; re-running them 
+Every task runs commands with a merged environment that includes the necessary
+compiler and SDK hints. Tasks are designed to be idempotent; re-running them
 should be safe.
 """
 
@@ -145,10 +145,7 @@ def _cmake_systemc_flags() -> str:
     prefix = os.environ.get("TOYSSD_SYSTEMC_PREFIX")
     if not prefix:
         return ""
-    return (
-        f" -DTOYSSD_FETCH_SYSTEMC=OFF"
-        f" -DTOYSSD_SYSTEMC_PREFIX={shlex.quote(prefix)}"
-    )
+    return f" -DTOYSSD_FETCH_SYSTEMC=OFF -DTOYSSD_SYSTEMC_PREFIX={shlex.quote(prefix)}"
 
 
 def _python() -> str:
@@ -189,7 +186,9 @@ def bootstrap(ctx) -> None:
     if uv:
         ctx.run(f"{uv} sync --extra dev", pty=True, env=_compiler_env())
     else:
-        ctx.run(f"{_python()} -m pip install --upgrade pip", pty=True, env=_compiler_env())
+        ctx.run(
+            f"{_python()} -m pip install --upgrade pip", pty=True, env=_compiler_env()
+        )
         ctx.run(
             f"{_python()} -m pip install -e {ROOT / 'python'}[dev]",
             pty=True,
@@ -316,6 +315,25 @@ def lint(ctx) -> None:
     ctx.run(f"{_python()} -m ruff check python", pty=True)
 
 
+@task
+def clean(ctx) -> None:
+    """Remove all build artifacts and generated files.
+
+    This task deletes the entire build/ directory, allowing developers to start
+    from a clean state. It's safe to run multiple times (idempotent) and useful
+    when switching between configurations or troubleshooting build problems.
+
+    After running clean, you'll need to run bootstrap (or build) again to
+    reconfigure the CMake build tree.
+    """
+    if BUILD_DIR.exists():
+        print(f"Removing {BUILD_DIR}...")
+        shutil.rmtree(BUILD_DIR)
+        print("Build directory cleaned successfully.")
+    else:
+        print(f"Build directory {BUILD_DIR} does not exist. Nothing to clean.")
+
+
 def _iter_sources() -> list[Path]:
     """Return all format-able C++ source files (headers and implementation).
 
@@ -343,3 +361,4 @@ ns.add_task(build)
 ns.add_task(test)
 ns.add_task(format)
 ns.add_task(lint)
+ns.add_task(clean)
