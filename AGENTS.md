@@ -34,6 +34,7 @@
 
 - **macOS:** run tasks **natively** (no Docker).  
 - **Linux/Windows/CI:** run tasks **inside Docker** (see §5).
+- **Codex Universal containers:** run [`./run/setup.sh`](./run/setup.sh) in new containers and [`./run/maintenance_setup.sh`](./run/maintenance_setup.sh) when resuming from cache before invoking tasks.
 
 Decision rule:
 
@@ -225,6 +226,19 @@ invoke lint
 invoke build
 invoke test
 ```
+
+**Codex Universal containers:**
+
+```bash
+./run/setup.sh                # first run in a freshly provisioned container
+./run/maintenance_setup.sh    # use this instead when resuming from cache
+uv run invoke bootstrap
+```
+
+- [`run/setup.sh`](./run/setup.sh) installs the apt toolchain from the Dockerfile dev image, fetches SystemC 3.0.2 into `/opt/systemc`, installs uv if missing, and runs `uv sync --extra dev` without touching the CMake build tree.
+- [`run/maintenance_setup.sh`](./run/maintenance_setup.sh) re-exports the SystemC/compiler env vars, ensures uv is on `PATH`, verifies `/opt/systemc` still exists, and re-syncs uv dependencies for cached containers.
+
+Both scripts are exercised in CI via the **Codex setup scripts** job (see [.github/workflows/ci.yml](./.github/workflows/ci.yml)), which runs them on a fresh GitHub Actions `ubuntu-24.04` runner to mimic the Codex container baseline. Keep the scripts in sync with the Dockerfile toolchain list so all environments stay aligned.
 
 ---
 
