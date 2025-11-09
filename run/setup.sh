@@ -94,7 +94,7 @@ if [[ ! -f "${SYSTEMC_PREFIX}/lib/libsystemc.so" ]]; then
 fi
 
 # Persist environment exports so future shells inherit compiler hints/SystemC location.
-profile_snippet=$'# toyssd environment\nexport TOYSSD_SYSTEMC_PREFIX=/opt/systemc\nexport TOYSSD_FETCH_SYSTEMC=OFF\nexport CC=clang\nexport CXX=clang++\nexport PATH="$HOME/.local/bin:$PATH"\n'
+profile_snippet=$'# toyssd environment\nexport TOYSSD_SYSTEMC_PREFIX=/opt/systemc\nexport TOYSSD_FETCH_SYSTEMC=OFF\nexport UV_SYSTEM_PREFER=1\nexport CC=clang\nexport CXX=clang++\nexport PATH="$HOME/.local/bin:$PATH"\n'
 if [[ -d /etc/profile.d && -w /etc/profile.d ]]; then
   printf '%s' "${profile_snippet}" | ${SUDO} tee /etc/profile.d/toyssd.sh >/dev/null
 else
