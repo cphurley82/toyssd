@@ -1,0 +1,59 @@
+name: "Copilot Setup Steps"
+
+# Run when changed for validation, and allow manual runs.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+  pull_request:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  # The job MUST be named exactly `copilot-setup-steps` for Copilot to use it.
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    # Keep permissions minimal; Copilot gets its own token later.
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          # Enable if your repo uses Git LFS
+          lfs: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build dev image (with cache)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: dev
+          tags: toyssd-dev:latest
+          load: true          # make the image available to subsequent steps/agent
+          push: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: List invoke tasks (sanity)
+        run: |
+          docker run --rm \
+            -v "$PWD":/workspaces/toyssd \
+            -w /workspaces/toyssd \
+            toyssd-dev invoke --list
+
+      # Optional: Prime a Debug CMake tree to speed up agent iterations.
+      # Uncomment if you want a pre-configured build directory.
+      # - name: Prime Debug build tree
+      #   run: |
+      #     docker run --rm \
+      #       -v "$PWD":/workspaces/toyssd \
+      #       -w /workspaces/toyssd \
+      #       toyssd-dev invoke bootstrap
+
