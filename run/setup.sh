@@ -14,7 +14,7 @@ SYSTEMC_SHA256="9b3693ed286aab958b9e5d79bb0ad3bc523bbc46931100553275352038f4a0c4
 SYSTEMC_PREFIX="/opt/systemc"
 # Number of parallel build jobs for the SystemC build (tunable via env to avoid OOM).
 SYSTEMC_BUILD_JOBS="${SYSTEMC_BUILD_JOBS:-2}"
-# Apt packages are copied from Dockerfile:25-44 to keep host + container parity.
+# Apt packages are based on Dockerfile:25-44, with additional Python packages for bare systems.
 APT_PACKAGES=(
   build-essential
   clang
