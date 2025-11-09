@@ -27,6 +27,14 @@ jobs:
           # Enable if your repo uses Git LFS
           lfs: false
 
+      # Install uv before the firewall is enabled so the Copilot agent doesn't
+      # attempt to curl astral.sh during its run. Place it on PATH globally.
+      - name: Install uv (pre-firewall)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          sudo mv "$HOME/.local/bin/uv" /usr/local/bin/uv
+          uv --version
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
