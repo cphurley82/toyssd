@@ -70,6 +70,14 @@ uv run invoke lint
 
 Formatting uses clang-format for C++ and Ruff for Python. Linting runs clang-tidy, cpplint, and Ruff checks.
 
+### Clean
+
+```bash
+uv run invoke clean
+```
+
+Removes all build artifacts (the entire `build/` directory). This is useful when you need to start from a clean state or troubleshoot build problems. After cleaning, run `invoke bootstrap` or `invoke build` to reconfigure the CMake build tree.
+
 ### (Optional) Speed up builds with ccache
 
 Install `ccache` on your host (e.g., `brew install ccache` on macOS or `sudo apt install ccache` on Linux). CMake auto-detects it and sets `CMAKE_{C,CXX}_COMPILER_LAUNCHER` so no extra flags are needed. Inside the dev container we mount a named volume (`toyssd-ccache`) to `/home/toyssd/.cache/ccache` so cached objects persist between sessions—you can replicate that locally by pointing `CCACHE_DIR` to a persistent location if desired.
