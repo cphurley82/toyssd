@@ -10,17 +10,22 @@
 
 #include <systemc>
 
-// clang-format off
-SC_MODULE(HelloModule) {  // Simple module defining a single SC_THREAD.
-  SC_CTOR(HelloModule) { SC_THREAD(run); }
+// Prefer plain C++ class form over SC_MODULE/SC_CTOR macros.
+class HelloModule : public sc_core::sc_module {
+ public:
+  SC_HAS_PROCESS(HelloModule);
+  explicit HelloModule(const sc_core::sc_module_name& name)
+      : sc_core::sc_module(name) {
+    SC_THREAD(run);
+  }
 
+ private:
   void run() {
     std::cout << "toyssd SystemC hello" << std::endl;
     sc_core::wait(sc_core::SC_ZERO_TIME);  // Allow delta-cycle scheduling.
     sc_core::sc_stop();                    // Terminate the kernel.
   }
 };
-// clang-format on
 
 int sc_main(int argc, char* argv[]) {
   (void)argc;
