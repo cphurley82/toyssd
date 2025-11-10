@@ -9,9 +9,9 @@ ARG USER_UID=1000
 ARG USER_GID=1000
 
 ################################################################################
-# Base stage — compiler toolchain, Python 3.11, uv, Invoke deps.
+# Base stage — compiler toolchain, Python 3.14, uv, Invoke deps.
 ################################################################################
-FROM python:3.11-bookworm AS base
+FROM python:3.14-bookworm AS base
 ARG USERNAME
 ARG USER_UID
 ARG USER_GID
@@ -117,7 +117,7 @@ RUN CMAKE_PREFIX_PATH=${TOYSSD_SYSTEMC_PREFIX} \
 ################################################################################
 # Runtime stage — slim image for executing workloads.
 ################################################################################
-FROM python:3.11-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 \

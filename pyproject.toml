@@ -17,7 +17,7 @@ description = "Modular SSD simulator skeleton backed by SystemC"
 # Long-form documentation to display on package pages
 readme = "docs/ssd_sim_design.md"
 # Support modern Python features and type hints; also narrows the wheel targets
-requires-python = ">=3.10"
+requires-python = ">=3.14"
 # Authors are optional but helpful for provenance and support
 authors = [
   { name = "toyssd contributors" }
@@ -68,11 +68,11 @@ toyssd = { path = "python", editable = true }
 [tool.scikit-build]
 # Minimum scikit-build-core version features we rely on
 minimum-version = "0.7"
-# Wheel Python ABI tag. "cp311" produces a CPython-3.11-specific wheel,
+# Wheel Python ABI tag. "cp314" produces a CPython-3.14-specific wheel,
 # which can improve compatibility with compiled extensions at the cost of
 # being version-specific.
 # TODO: Omit this or use a more generic tag per scikit-build-core docs.
-wheel.py-api = "cp311"
+wheel.py-api = "cp314"
 # Pass through a CMake cache definition. Default tests OFF to speed CI
 # builds of wheels and avoid bundling test-only artifacts. Override at
 # build time with: `-C cmake.define.TOYSSD_BUILD_TESTS=ON`.
@@ -86,7 +86,7 @@ addopts = "-q"
 
 [tool.mypy]
 # Static type checking settings. Target our main dev Python version for stubs.
-python_version = "3.11"
+python_version = "3.14"
 # Many third-party packages lack type hints; ignoring missing imports avoids noise.
 ignore_missing_imports = true
 # Start with non-strict to ease adoption; tighten as the project grows.

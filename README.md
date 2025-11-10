@@ -29,7 +29,7 @@
 
 ### Prerequisites
 
-- Python 3.11+ (uv will set up a local virtual environment automatically).
+- Python 3.14+ (uv will set up a local virtual environment automatically).
 - Xcode Command Line Tools (`xcode-select --install`) so Apple’s SDK-aware Clang and system headers are available.
 - CMake ≥ 3.24 and a C++20-capable compiler. Invoke tasks pin `CC=/usr/bin/clang` and `CXX=/usr/bin/clang++` so the Apple Clang toolchain is used by default.
 - Ninja (optional but preferred for faster builds; uv/scikit-build-core will fetch it if missing).
