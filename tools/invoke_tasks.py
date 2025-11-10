@@ -392,6 +392,13 @@ def coverage(
             reasons.append("Python coverage thresholds")
         raise Exit(f"Coverage task failed ({', '.join(reasons)}). See coverage artifacts for details.", code=1)
 
+    cpp_report = cpp_index.resolve()
+    py_report = (python_html_dir / "index.html").resolve()
+    print("\nC++ coverage report:")
+    print(cpp_report)
+    print("\nPython coverage report:")
+    print(py_report)
+
 
 @task
 def format(ctx) -> None:
