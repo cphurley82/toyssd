@@ -17,7 +17,7 @@ This document defines the Docker-based development and runtime architecture for 
 
 | Stage     | Purpose                      | Includes                                                                 |
 | --------- | ---------------------------- | ------------------------------------------------------------------------ |
-| `base`    | Foundation image             | OS packages, Python 3.11, LLVM/Clang toolchain, official `uv` binary     |
+| `base`    | Foundation image             | OS packages, Python runtime, LLVM/Clang toolchain, official `uv` binary  |
 | `dev`     | Full development environment | `/opt/systemc`, PySysC headers, CMake/Ninja, Invoke tasks, VS Code hooks |
 | `runtime` | Slim image for end-users     | Python runtime + toyssd wheel/stub backend + SystemC runtime libraries   |
 
