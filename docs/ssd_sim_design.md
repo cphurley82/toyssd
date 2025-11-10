@@ -7,7 +7,7 @@ This document describes the design for `toyssd`, a modular solid-state drive (SS
 ## 2. Goals
 
 - Provide a Python-first SSD simulation API that instantiates SystemC 3.0.2 models via PySysC (branch `fix-pyeval-init`).
-- Model a minimal SSD datapath: `host` → Simple NVMe-like TLM extension → `ssd_controller` → Simple NAND ONFI-like TLM extension → `nand`.
+- Model a minimal SSD datapath: `host` → Simple NVMe-like TLM extension → `controller` → Simple NAND ONFI-like TLM extension → `nand`.
 - Support blocking transport-only TLM2 interactions for deterministic behavior.
 - Supply standalone GoogleTest suites for each SystemC model and ensure Python bindings can instantiate each model in isolation.
 - Offer a simple NAND visualization reminiscent of Norton Disk Doctor’s defragmentation view to illustrate block usage.
@@ -31,7 +31,7 @@ Python API (toyssd package)
 └── PySysC bindings
     └── SystemC kernel (C++20)
         ├── host model
-        ├── ssd_controller model
+        ├── controller model
         └── nand model
 ```
 
@@ -181,7 +181,7 @@ All models follow Google C++ style, compile under C++20, and use blocking transp
     - Initial release assumes `queue_depth = 1` end-to-end (host and controller).
     - Alignment and capacity rules: `block_size_kb` must be divisible by `sector_size_bytes`; writes that span pages are split internally; capacity overruns raise `CapacityError`.
 
-- `ssd_controller`:
+- `controller`:
   - Converts host NVMe commands into NAND operations through Flash Translation Layer (FTL).
   - Direct-mapped addressing (LBA → fixed physical block/page) for initial validation.
   - Dispatches commands sequentially to NAND model.
@@ -474,7 +474,7 @@ toyssd/
 ├── cmake/ (toolchain, SystemC & PySysC helpers)
 ├── src/
 │   ├── host/
-│   ├── ssd_controller/
+│   ├── controller/
 │   └── nand/
 ├── include/
 │   ├── toyssd/host.hpp
@@ -482,7 +482,7 @@ toyssd/
 │   └── toyssd/nand.hpp
 ├── tests/
 │   ├── host_test.cc
-│   ├── ssd_controller_test.cc
+│   ├── controller_test.cc
 │   └── nand_test.cc
 ├── python/
 │   └── toyssd/ (Python package sources)
