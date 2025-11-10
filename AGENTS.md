@@ -23,6 +23,7 @@
    - Run **format + lint**.  
    - **Build**, **test**, and ensure coverage gates still pass (run `uv run invoke coverage` if the change could affect coverage).  
    - If coverage drops toward the thresholds (60% C++ lines / 60% Python lines), add or update unit tests before finishing.  
+   - Treat unit tests as first-class code: architect them thoughtfully, keep naming/fixtures consistent, document any non-obvious behavior, and refactor test utilities instead of duplicating logic.  
    - Update docs and ensure **every referenced repo file is a relative Markdown link**.  
 3. **When you change docs:** keep links up to date and update the **Docs Index** (§10).  
 4. Prefer **minimal diffs** (don’t reformat unrelated files).  
