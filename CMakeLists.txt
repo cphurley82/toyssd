@@ -175,7 +175,7 @@ set(TOYSSD_HEADERS
 # Primary library sources grouped by subsystem.
 set(TOYSSD_SOURCES
     src/host/host.cpp
-    src/ssd_controller/controller.cpp
+    src/controller/controller.cpp
     src/nand/nand.cpp
     src/common/extensions.cpp
 )
