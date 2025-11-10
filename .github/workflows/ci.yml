@@ -14,9 +14,11 @@ on:
 
 jobs:
   macos-dev:
+    if: github.base_ref == '' || github.base_ref == 'main'
+    # Run macOS matrix for pushes (base_ref empty) and PRs targeting main only.
     # Native macOS coverage to ensure the SystemC toolchain builds on both Apple Silicon
     # and Intel runners (matches local developer environments).
-    name: macOS ${{ matrix.label }}
+    name: toyssd • macOS • invoke • ${{ matrix.label }}
     runs-on: ${{ matrix.runner }}
     env:
       # Pin compilers both CMake uses Apple Clang.
@@ -147,7 +149,7 @@ jobs:
     # Linux baseline that builds the dev container and exercises the same Invoke
     # tasks inside it. Guarantees parity between the published Docker image,
     # VS Code devcontainers, and CI.
-    name: Docker dev container
+    name: toyssd • Docker • invoke suite
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -193,7 +195,7 @@ jobs:
   docker-coverage:
     # Runs coverage-only gates inside the dev container on Ubuntu to keep
     # results reproducible and aligned with CI.
-    name: Coverage (Docker)
+    name: toyssd • Docker • coverage
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -224,7 +226,7 @@ jobs:
   codex-scripts:
     # Ensure the Codex setup/maintenance scripts stay healthy on a clean Ubuntu
     # image that mirrors Codex (GitHub's ubuntu-24.04 runner).
-    name: Codex setup scripts
+    name: toyssd • Ubuntu • Codex setup
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
