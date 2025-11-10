@@ -37,7 +37,7 @@ These commands cover clang-format, clang-tidy, cpplint, and Ruff. If you intenti
 ### Python Environment Notes
 
 - uv manages the `.venv` automatically; avoid committing it.
-- Prefer Python 3.11 for now. uv pins compatible wheels for SystemC/PySysC integration.
+- Prefer Python 3.13 for now. uv pins compatible wheels for SystemC/PySysC integration.
 - Install the Xcode Command Line Tools (`xcode-select --install`). Invoke tasks set `CC=/usr/bin/clang` and `CXX=/usr/bin/clang++` so the Apple-provided SDK-aware toolchain is used when compiling SystemC.
 
 ## Clean Code Principles
