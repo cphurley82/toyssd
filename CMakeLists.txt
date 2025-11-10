@@ -25,6 +25,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # forcing consumers of the library to adopt the same policy.
 option(TOYSSD_BUILD_TESTS "Build toyssd unit tests" ON)
 option(TOYSSD_ENABLE_WARNINGS "Enable strict compiler warnings" ON)
+# Toggle gcov/llvm-cov instrumentation (off by default to avoid overhead).
+option(TOYSSD_ENABLE_COVERAGE "Enable coverage instrumentation" OFF)
 # Allow Docker/packagers to provide their own SystemC installation instead of
 # downloading it during configuration.
 option(TOYSSD_FETCH_SYSTEMC "Download SystemC via FetchContent" ON)
@@ -147,6 +149,16 @@ if(TOYSSD_CCACHE_PROGRAM)
             "${TOYSSD_CCACHE_PROGRAM}"
             CACHE STRING "C++ compiler launcher" FORCE
         )
+    endif()
+endif()
+
+if(TOYSSD_ENABLE_COVERAGE)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|AppleClang|GNU")
+        add_compile_options(--coverage -O0 -g)
+        add_link_options(--coverage)
+        message(STATUS "Coverage instrumentation enabled (TOYSSD_ENABLE_COVERAGE=ON).")
+    else()
+        message(WARNING "TOYSSD_ENABLE_COVERAGE is only supported with GCC/Clang toolchains; disabling instrumentation.")
     endif()
 endif()
 
