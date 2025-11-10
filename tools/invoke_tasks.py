@@ -332,7 +332,6 @@ def coverage(
     cpp_xml = cpp_dir / "cobertura.xml"
     gcovr_base = (
         f"gcovr -r {shlex.quote(str(ROOT))} --object-directory {shlex.quote(str(build_dir))}"
-        " --branches"
     )
     exclude_patterns = [
         r".*/tests/.*",
