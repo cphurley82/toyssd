@@ -41,6 +41,8 @@ dependencies = [
 dev = [
   # test runner
   "pytest>=8.0.0",
+  # coverage plugin for pytest
+  "pytest-cov>=4.1.0",
   # static type checker
   "mypy>=1.8.0",
   # type hints for invoke so mypy understands tasks
@@ -50,7 +52,9 @@ dev = [
   # fast Python linter/formatter (complements black style)
   "ruff>=0.2.0",
   # markdown linter for documentation consistency
-  "pymarkdownlnt>=0.9.13"
+  "pymarkdownlnt>=0.9.13",
+  # gcovr CLI for C++ coverage reporting
+  "gcovr>=7.2"
 ]
 
 [build-system]
@@ -83,6 +87,20 @@ cmake.define.TOYSSD_BUILD_TESTS = "OFF"
 testpaths = ["python/tests"]
 # quiet mode by default; use -vv locally when debugging
 addopts = "-q"
+
+[tool.coverage.run]
+branch = true
+source = ["toyssd"]
+omit = [
+  "*/tests/*",
+  "python/tests/*",
+  "*/examples/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+  "if __name__ == \"__main__\":",
+]
 
 [tool.mypy]
 # Static type checking settings. Target our main dev Python version for stubs.

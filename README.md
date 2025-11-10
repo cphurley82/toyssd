@@ -61,6 +61,14 @@ uv run invoke test
 
 Runs the GoogleTest suites and Python unit tests. The Controller/NAND tests wire up the full path to verify single-page write/read behavior.
 
+### Coverage
+
+```bash
+uv run invoke coverage
+```
+
+Generates an instrumented build tree at `build/coverage`, runs all tests, and emits reports under `coverage/cpp/` (gcovr HTML + Cobertura-format XML) and `coverage/python/` (pytest-cov HTML + XML). On Linux/CI the task should run inside the Docker dev image; on macOS run it natively. CI uploads the entire `coverage/` directory as an artifact so you can download `coverage/cpp/index.html` or `coverage/python/html/index.html` directly from the GitHub Actions run without using any third-party service. See [docs/coverage_design.md](docs/coverage_design.md) for filtering rules and CI thresholds.
+
 ### Format & Lint
 
 ```bash

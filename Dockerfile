@@ -32,15 +32,18 @@ RUN apt-get update \
         cmake \
         curl \
         git \
+        libclang-rt-14-dev \
         libedit-dev \
         libffi-dev \
         libssl-dev \
+        llvm-14 \
         ninja-build \
         pkg-config \
         sudo \
         tar \
         unzip \
         xz-utils \
+    && ln -sf /usr/lib/llvm-14/bin/llvm-cov /usr/local/bin/llvm-cov \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv globally for deterministic Python dependency management.

@@ -19,10 +19,11 @@ import subprocess
 import sys
 from pathlib import Path
 
-from invoke import Collection, task
+from invoke import Collection, Exit, task
 
 ROOT = Path(__file__).resolve().parents[1]
 BUILD_DIR = ROOT / "build"
+COVERAGE_DIR = ROOT / "coverage"
 
 
 def _detect_sdkroot() -> str | None:
@@ -264,6 +265,120 @@ def test(ctx, config: str = "Debug") -> None:
     ctx.run(f"{_python()} -m pytest", pty=True)
 
 
+@task(optional=["fail_under_cpp", "fail_under_python"])
+def coverage(
+    ctx,
+    fail_under_cpp: str | None = None,
+    fail_under_python: str | None = None,
+) -> None:
+    """Build coverage-instrumented binaries and emit C++/Python reports.
+
+    Reports:
+    - C++: gcovr HTML + Cobertura-format XML under coverage/cpp/
+    - Python: pytest-cov HTML + XML under coverage/python/
+
+    Threshold arguments are optional and mainly used in CI (see docs/coverage_design.md).
+    """
+
+    build_dir = BUILD_DIR / "coverage"
+    build_dir.mkdir(parents=True, exist_ok=True)
+
+    cpp_dir = COVERAGE_DIR / "cpp"
+    python_dir = COVERAGE_DIR / "python"
+    python_html_dir = python_dir / "html"
+
+    # Always start from a clean slate so HTML indexes refresh on every run.
+    for stale in (cpp_dir, python_dir):
+        if stale.exists():
+            shutil.rmtree(stale)
+
+    for path in (COVERAGE_DIR, cpp_dir, python_dir, python_html_dir):
+        path.mkdir(parents=True, exist_ok=True)
+
+    configure_cmd = (
+        f"cmake -S {ROOT} -B {build_dir} -DCMAKE_BUILD_TYPE=Debug"
+        f"{_cmake_sysroot_flag()}{_cmake_arch_flag()}{_cmake_systemc_flags()}"
+        " -DTOYSSD_BUILD_TESTS=ON -DTOYSSD_ENABLE_COVERAGE=ON"
+    )
+    ctx.run(configure_cmd, pty=True, env=_compiler_env())
+
+    ctx.run(
+        f"cmake --build {build_dir} --parallel",
+        pty=True,
+        env=_compiler_env(),
+    )
+    ctx.run(
+        f"ctest --test-dir {build_dir} --output-on-failure",
+        pty=True,
+        env=_compiler_env(),
+    )
+
+    cpp_index = cpp_dir / "index.html"
+    cpp_xml = cpp_dir / "cobertura.xml"
+    gcovr_base = (
+        f"gcovr -r {shlex.quote(str(ROOT))} --object-directory {shlex.quote(str(build_dir))}"
+        " --branches"
+    )
+    exclude_patterns = [
+        r".*/tests/.*",
+        r".*/examples/.*",
+        r".*/third_party/.*",
+        r".*/opt/systemc.*",
+        r".*/_deps/.*",
+    ]
+    for pattern in exclude_patterns:
+        gcovr_base += f" --exclude {shlex.quote(pattern)}"
+    llvm_cov = shutil.which("llvm-cov")
+    if llvm_cov:
+        gcovr_base += f" --gcov-executable {shlex.quote(f'{llvm_cov} gcov')}"
+    if fail_under_cpp:
+        try:
+            threshold = int(fail_under_cpp)
+        except ValueError as exc:  # pragma: no cover - defensive against Invoke args
+            raise RuntimeError("fail_under_cpp must be an integer") from exc
+        gcovr_html_cmd = gcovr_base + f" --fail-under-line={threshold}"
+    else:
+        gcovr_html_cmd = gcovr_base
+
+    gcovr_html_cmd += f" --html-details --output {shlex.quote(str(cpp_index))}"
+    gcovr_failed = False
+    result = ctx.run(gcovr_html_cmd, pty=True, warn=True)
+    if result.exited != 0:
+        gcovr_failed = True
+
+    gcovr_xml_cmd = gcovr_base + f" --xml-pretty --output {shlex.quote(str(cpp_xml))}"
+    result = ctx.run(gcovr_xml_cmd, pty=True, warn=True)
+    if result.exited != 0:
+        gcovr_failed = True
+
+    python_xml = python_dir / "coverage.xml"
+    pytest_cmd = (
+        f"{_python()} -m pytest -q"
+        f" --cov=toyssd --cov-branch"
+        f" --cov-report=xml:{python_xml}"
+        f" --cov-report=html:{python_html_dir}"
+        " --cov-report=term"
+    )
+    if fail_under_python:
+        try:
+            py_threshold = int(fail_under_python)
+        except ValueError as exc:  # pragma: no cover
+            raise RuntimeError("fail_under_python must be an integer") from exc
+        pytest_cmd += f" --cov-fail-under={py_threshold}"
+    pytest_failed = False
+    result = ctx.run(pytest_cmd, pty=True, warn=True)
+    if result.exited != 0:
+        pytest_failed = True
+
+    if gcovr_failed or pytest_failed:
+        reasons = []
+        if gcovr_failed:
+            reasons.append("C++ coverage thresholds")
+        if pytest_failed:
+            reasons.append("Python coverage thresholds")
+        raise Exit(f"Coverage task failed ({', '.join(reasons)}). See coverage artifacts for details.", code=1)
+
+
 @task
 def format(ctx) -> None:
     """Apply clang-format to C++ and ruff format to Python sources.
@@ -392,6 +507,7 @@ ns = Collection()
 ns.add_task(bootstrap)
 ns.add_task(build)
 ns.add_task(test)
+ns.add_task(coverage)
 ns.add_task(format)
 ns.add_task(lint)
 ns.add_task(lint_markdown)

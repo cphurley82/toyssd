@@ -21,7 +21,8 @@
 1. **Read first:** this file + [README.md](./README.md).  
 2. **When you change code:**  
    - Run **format + lint**.  
-   - **Build** and **test**.  
+   - **Build**, **test**, and ensure coverage gates still pass (run `uv run invoke coverage` if the change could affect coverage).  
+   - If coverage drops toward the thresholds (60% C++ lines / 60% Python lines), add or update unit tests before finishing.  
    - Update docs and ensure **every referenced repo file is a relative Markdown link**.  
 3. **When you change docs:** keep links up to date and update the **Docs Index** (§10).  
 4. Prefer **minimal diffs** (don’t reformat unrelated files).  
@@ -55,6 +56,7 @@ invoke format          # Auto-format C++/Python
 invoke lint            # Run all linters (C++, Python, Markdown)
 invoke build           # Configure & build project (CMake)
 invoke test            # Run tests and examples
+invoke coverage        # Build an instrumented tree + emit C++/Python coverage reports
 ```
 
 > Ensure these tasks exist in [invoke_tasks.py](./tools/invoke_tasks.py) or [tasks.py](./tasks.py).
@@ -193,6 +195,7 @@ When authorized:
 | Overview | [README.md](./README.md) | Project overview |
 | SystemC design | [ssd_sim_design.md](./docs/ssd_sim_design.md) | Architecture, timing, examples |
 | Docker design | [docker_design.md](./docs/docker_design.md) | Container and CI design |
+| Coverage design | [coverage_design.md](./docs/coverage_design.md) | C++/Python coverage strategy |
 | Contributing | [CONTRIBUTING.md](./CONTRIBUTING.md) | Review, CI gates, style |
 | Agent rules | [AGENTS.md](./AGENTS.md) | AI agent behavior |
 
@@ -213,6 +216,7 @@ uv run invoke format
 uv run invoke lint
 uv run invoke build
 uv run invoke test
+uv run invoke coverage
 ```
 
 **Linux/Windows/CI (Docker):**  
@@ -225,6 +229,7 @@ invoke format
 invoke lint
 invoke build
 invoke test
+invoke coverage
 ```
 
 **Codex Universal containers:**

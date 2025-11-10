@@ -190,6 +190,37 @@ jobs:
           name: python-deps-docker
           path: python-deps-docker.txt
 
+  docker-coverage:
+    # Runs coverage-only gates inside the dev container on Ubuntu to keep
+    # results reproducible and aligned with CI.
+    name: Coverage (Docker)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build dev container image
+        run: docker build --target dev -t toyssd-dev:coverage .
+
+      - name: Run coverage task inside container
+        run: |
+          docker run --rm -u root \
+            -v "${{ github.workspace }}":/workspaces/toyssd \
+            toyssd-dev:coverage \
+            bash -lc "cd /workspaces/toyssd && invoke bootstrap && invoke coverage --fail-under-cpp 60 --fail-under-python 60"
+
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: coverage
+
   codex-scripts:
     # Ensure the Codex setup/maintenance scripts stay healthy on a clean Ubuntu
     # image that mirrors Codex (GitHub's ubuntu-24.04 runner).
