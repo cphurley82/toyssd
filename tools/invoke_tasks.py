@@ -141,12 +141,27 @@ def _cmake_systemc_flags() -> str:
     """Return CMake flags that reuse a pre-installed SystemC, if provided.
 
     The Docker/devcontainer flow installs SystemC under /opt/systemc and sets
-    TOYSSD_SYSTEMC_PREFIX so local configuration can skip FetchContent.
+    TOYSSD_SYSTEMC_PREFIX so local configuration can skip FetchContent. When
+    those env vars are not explicitly provided (e.g., running inside a Docker
+    container that already has /opt/systemc), fall back to auto-detecting the
+    prefix so we avoid rebuilding SystemC redundantly.
     """
+    flags: list[str] = []
     prefix = os.environ.get("TOYSSD_SYSTEMC_PREFIX")
     if not prefix:
+        candidate = Path("/opt/systemc")
+        if (candidate / "lib").exists():
+            prefix = str(candidate)
+    fetch = os.environ.get("TOYSSD_FETCH_SYSTEMC")
+    if prefix:
+        flags.append(f"-DTOYSSD_SYSTEMC_PREFIX={shlex.quote(prefix)}")
+        if fetch is None:
+            fetch = "OFF"
+    if fetch is not None:
+        flags.append(f"-DTOYSSD_FETCH_SYSTEMC={shlex.quote(fetch)}")
+    if not flags:
         return ""
-    return f" -DTOYSSD_FETCH_SYSTEMC=OFF -DTOYSSD_SYSTEMC_PREFIX={shlex.quote(prefix)}"
+    return " " + " ".join(flags)
 
 
 def _python() -> str:
