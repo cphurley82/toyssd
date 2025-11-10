@@ -54,6 +54,13 @@ We strive to follow clean code principles across both C++ and Python:
 
 These practices complement the language-specific guidance below and are reinforced by our format and lint tooling.
 
+### Tests as First-Class Code
+
+- Treat test code with the same design effort as production code.  
+- Keep naming, fixtures, and helper utilities consistent; refactor common logic into reusable utilities instead of copying across tests.  
+- Document non-obvious expectations directly in the tests so future contributors understand the intent.  
+- Cover both success paths and failure/edge conditions, and justify any intentionally uncovered areas in the description.
+
 ### C++ Guidelines
 
 - Follow the Google C++ Style Guide (mirrors clang-format/clang-tidy defaults in the repo).
