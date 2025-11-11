@@ -14,9 +14,9 @@
 #include <stdexcept>
 #include <vector>
 
+#include "toyssd/controller.hpp"
 #include "toyssd/host.hpp"
 #include "toyssd/nand.hpp"
-#include "toyssd/ssd_controller.hpp"
 #include "tests/test_geometry.hpp"
 
 namespace toyssd::test {
@@ -63,7 +63,7 @@ struct ControllerHarness {
   explicit ControllerHarness(const NandGeometry& geometry)
       : controller_(sc_core::sc_gen_unique_name("controller"), geometry),
         nand_(sc_core::sc_gen_unique_name("stub_nand")) {
-    controller_.nand_socket.bind(nand_.target_socket_);
+    controller_.nand_socket_.bind(nand_.target_socket_);
   }
 };
 
@@ -131,8 +131,8 @@ TEST(ControllerTest, WriteReadRoundtrip) {
   auto controller = Controller("controller", geometry);
   auto nand = Nand("nand", geometry);
 
-  host.nvme_socket.bind(controller.host_socket);
-  controller.nand_socket.bind(nand.target_socket);
+  host.nvme_socket.bind(controller.host_socket_);
+  controller.nand_socket_.bind(nand.target_socket);
 
   auto pattern = std::vector<uint8_t>(kPageSizeBytes);
   std::iota(pattern.begin(), pattern.end(), 0);
@@ -152,8 +152,8 @@ TEST(ControllerTest, CapacityExceededTriggersError) {
   auto controller = Controller("controller", geometry);
   auto nand = Nand("nand", geometry);
 
-  host.nvme_socket.bind(controller.host_socket);
-  controller.nand_socket.bind(nand.target_socket);
+  host.nvme_socket.bind(controller.host_socket_);
+  controller.nand_socket_.bind(nand.target_socket);
 
   constexpr uint8_t kCapacityPattern = 0xAA;
   auto pattern = std::vector<uint8_t>(kPageSizeBytes, kCapacityPattern);

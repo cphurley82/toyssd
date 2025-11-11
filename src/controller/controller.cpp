@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-#include "toyssd/ssd_controller.hpp"
+#include "toyssd/controller.hpp"
 
 namespace toyssd {
 
@@ -20,8 +20,8 @@ constexpr uint32_t kLogicalBlockSizeBytes = 4096;
 Controller::Controller(const sc_core::sc_module_name& name,
                        NandGeometry geometry)
     : sc_core::sc_module(name),
-      host_socket("host_socket"),
-      nand_socket("nand_socket"),
+      host_socket_("host_socket_"),
+      nand_socket_("nand_socket_"),
       geometry_(geometry) {
   if (geometry_.dies == 0U) {
     throw std::invalid_argument("Controller requires at least one die");
@@ -38,7 +38,7 @@ Controller::Controller(const sc_core::sc_module_name& name,
 
   logical_blocks_per_page_ =
       std::max(1U, geometry_.page_size_bytes / kLogicalBlockSizeBytes);
-  host_socket.register_b_transport(this, &Controller::b_transport);
+  host_socket_.register_b_transport(this, &Controller::b_transport);
 }
 
 void Controller::b_transport(tlm::tlm_generic_payload& payload,
@@ -102,7 +102,7 @@ void Controller::handle_write(tlm::tlm_generic_payload& payload,
   nand_ext->pattern_seed = command.pattern_seed;
   nand_payload.set_extension(nand_ext);
 
-  nand_socket->b_transport(nand_payload, delay);
+  nand_socket_->b_transport(nand_payload, delay);
   if (nand_payload.get_response_status() != tlm::TLM_OK_RESPONSE) {
     command.status = NvmeStatus::INTERNAL_ERROR;
     payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
@@ -155,7 +155,7 @@ void Controller::handle_read(tlm::tlm_generic_payload& payload,
   nand_ext->pattern_seed = command.pattern_seed;
   nand_payload.set_extension(nand_ext);
 
-  nand_socket->b_transport(nand_payload, delay);
+  nand_socket_->b_transport(nand_payload, delay);
   if (nand_payload.get_response_status() != tlm::TLM_OK_RESPONSE) {
     command.status = NvmeStatus::INTERNAL_ERROR;
     payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);

@@ -7,8 +7,8 @@
 #include <cstdint>
 #include <vector>
 
-#include <gtest/gtest.h>                     // NOLINT(build/include_order)
 #include <tlm>                               // NOLINT(build/include_order)
+#include <gtest/gtest.h>                     // NOLINT(build/include_order)
 #include <tlm_utils/simple_target_socket.h>  // NOLINT(build/include_order)
 
 #include "toyssd/host.hpp"
