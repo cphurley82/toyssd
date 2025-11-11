@@ -18,12 +18,13 @@
 #include "toyssd/host.hpp"
 #include "toyssd/nand.hpp"
 #include "tests/test_geometry.hpp"
+#include "tests/test_payload_helpers.hpp"
 
 namespace toyssd::test {
 
 namespace {
 
-constexpr uint32_t kPageSizeBytes = 4096;
+constexpr uint32_t kPageSizeBytes = kDefaultPageSizeBytes;
 
 // Self-contained stub that lets tests observe how the controller drives the
 // NAND socket without spinning up the full NAND model.
@@ -78,48 +79,6 @@ NvmeCommandExtension* AttachCommand(tlm::tlm_generic_payload& payload,
   return command;
 }
 
-// Releases the NVMe command extension currently attached to the payload.
-void ReleaseCommand(tlm::tlm_generic_payload& payload) {
-  NvmeCommandExtension* released = nullptr;
-  payload.release_extension(released);
-  delete released;
-}
-
-// Configures the payload with the given parameters.
-void ConfigurePayload(tlm::tlm_generic_payload& payload,
-                      tlm::tlm_command command, uint8_t* data_ptr,
-                      size_t data_length, size_t streaming_width) {
-  payload.set_command(command);
-  payload.set_data_ptr(data_ptr);
-  payload.set_data_length(data_length);
-  payload.set_streaming_width(streaming_width);
-  payload.set_byte_enable_ptr(nullptr);
-  payload.set_response_status(tlm::TLM_INCOMPLETE_RESPONSE);
-}
-
-// Configures the payload with the given parameters.
-void ConfigurePayload(tlm::tlm_generic_payload& payload,
-                      tlm::tlm_command command, std::vector<uint8_t>& buffer) {
-  ConfigurePayload(payload, command, buffer.data(), buffer.size(),
-                   buffer.size());
-}
-
-// Allocates and initializes a payload with the provided buffer.
-std::unique_ptr<tlm::tlm_generic_payload> MakePayload(tlm::tlm_command command,
-                                                      uint8_t* data_ptr,
-                                                      size_t data_length,
-                                                      size_t streaming_width) {
-  auto payload = std::make_unique<tlm::tlm_generic_payload>();
-  ConfigurePayload(*payload, command, data_ptr, data_length, streaming_width);
-  return payload;
-}
-
-// Allocates and initializes a payload with the provided buffer.
-std::unique_ptr<tlm::tlm_generic_payload> MakePayload(
-    tlm::tlm_command command, std::vector<uint8_t>& buffer) {
-  return MakePayload(command, buffer.data(), buffer.size(), buffer.size());
-}
-
 }  // namespace
 
 // Sanity check that the full host/controller/nand stack can move data.
@@ -134,8 +93,7 @@ TEST(ControllerTest, WriteReadRoundtrip) {
   host.nvme_socket.bind(controller.host_socket_);
   controller.nand_socket_.bind(nand.target_socket);
 
-  auto pattern = std::vector<uint8_t>(kPageSizeBytes);
-  std::iota(pattern.begin(), pattern.end(), 0);
+  auto pattern = MakeSequentialBuffer(kPageSizeBytes);
 
   host.submit_write(0, pattern, DataPattern::SEQUENTIAL_COUNTER);
   auto result = host.submit_read(0, 1);
@@ -156,7 +114,7 @@ TEST(ControllerTest, CapacityExceededTriggersError) {
   controller.nand_socket_.bind(nand.target_socket);
 
   constexpr uint8_t kCapacityPattern = 0xAA;
-  auto pattern = std::vector<uint8_t>(kPageSizeBytes, kCapacityPattern);
+  auto pattern = MakePatternBuffer(kPageSizeBytes, kCapacityPattern);
 
   EXPECT_THROW(host.submit_write(10, pattern, DataPattern::SEQUENTIAL_COUNTER),
                std::runtime_error);
@@ -199,7 +157,7 @@ TEST(ControllerTest, MissingNvmeExtensionReturnsError) {
   auto harness = ControllerHarness(MakeGeometry());
 
   constexpr uint8_t kMissingExtensionPattern = 0xCD;
-  auto data = std::vector<uint8_t>(kPageSizeBytes, kMissingExtensionPattern);
+  auto data = MakePatternBuffer(kPageSizeBytes, kMissingExtensionPattern);
   auto payload = MakePayload(tlm::TLM_WRITE_COMMAND, data);
 
   auto delay = sc_core::SC_ZERO_TIME;
@@ -213,7 +171,7 @@ TEST(ControllerTest, InvalidOpcodeSetsGenericErrorResponse) {
   auto harness = ControllerHarness(MakeGeometry());
 
   constexpr uint8_t kInvalidOpcodePattern = 0xCD;
-  auto data = std::vector<uint8_t>(kPageSizeBytes, kInvalidOpcodePattern);
+  auto data = MakePatternBuffer(kPageSizeBytes, kInvalidOpcodePattern);
   auto payload = MakePayload(tlm::TLM_IGNORE_COMMAND, data);
   AttachCommand(*payload, NvmeOpcode::FLUSH);
 
@@ -224,7 +182,7 @@ TEST(ControllerTest, InvalidOpcodeSetsGenericErrorResponse) {
   ASSERT_NE(command, nullptr);
   EXPECT_EQ(command->status, NvmeStatus::INVALID_OPCODE);
   EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
-  ReleaseCommand(*payload);
+  ReleaseExtension<NvmeCommandExtension>(*payload);
 }
 
 // Write with missing data buffer should set invalid field status.
@@ -242,14 +200,14 @@ TEST(ControllerTest, WriteMissingDataBufferTriggersInvalidField) {
   ASSERT_NE(command, nullptr);
   EXPECT_EQ(command->status, NvmeStatus::INVALID_FIELD);
   EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
-  ReleaseCommand(*payload);
+  ReleaseExtension<NvmeCommandExtension>(*payload);
 }
 
 // Write with zero length should set invalid field status.
 TEST(ControllerTest, WriteZeroLengthTriggersInvalidField) {
   auto harness = ControllerHarness(MakeGeometry());
 
-  auto data = std::vector<uint8_t>(kPageSizeBytes, 0x00);
+  auto data = MakePatternBuffer(kPageSizeBytes, 0x00);
   auto payload =
       MakePayload(tlm::TLM_WRITE_COMMAND, data.data(), 0, data.size());
   AttachCommand(*payload, NvmeOpcode::WRITE);
@@ -261,7 +219,7 @@ TEST(ControllerTest, WriteZeroLengthTriggersInvalidField) {
   ASSERT_NE(command, nullptr);
   EXPECT_EQ(command->status, NvmeStatus::INVALID_FIELD);
   EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
-  ReleaseCommand(*payload);
+  ReleaseExtension<NvmeCommandExtension>(*payload);
 }
 
 // Write beyond capacity should set capacity exceeded status.
@@ -269,7 +227,7 @@ TEST(ControllerTest, WriteCapacityExceededSetsNvmeStatus) {
   auto harness = ControllerHarness(MakeGeometry());
 
   constexpr uint8_t kCapacityPattern = 0xFF;
-  auto data = std::vector<uint8_t>(kPageSizeBytes, kCapacityPattern);
+  auto data = MakePatternBuffer(kPageSizeBytes, kCapacityPattern);
   auto payload = MakePayload(tlm::TLM_WRITE_COMMAND, data);
   auto* command = AttachCommand(*payload, NvmeOpcode::WRITE, /*lba=*/1);
   command->length = 1;
@@ -281,7 +239,7 @@ TEST(ControllerTest, WriteCapacityExceededSetsNvmeStatus) {
   ASSERT_NE(command_after, nullptr);
   EXPECT_EQ(command_after->status, NvmeStatus::CAPACITY_EXCEEDED);
   EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
-  ReleaseCommand(*payload);
+  ReleaseExtension<NvmeCommandExtension>(*payload);
 }
 
 // Write should propagate transport errors from NAND.
@@ -290,7 +248,7 @@ TEST(ControllerTest, WritePropagatesNandTransportErrors) {
   harness.nand_.next_response_status_ = tlm::TLM_GENERIC_ERROR_RESPONSE;
 
   constexpr uint8_t kTransportErrorPattern = 0x01;
-  auto data = std::vector<uint8_t>(kPageSizeBytes, kTransportErrorPattern);
+  auto data = MakePatternBuffer(kPageSizeBytes, kTransportErrorPattern);
   auto payload = MakePayload(tlm::TLM_WRITE_COMMAND, data);
   AttachCommand(*payload, NvmeOpcode::WRITE);
 
@@ -301,7 +259,7 @@ TEST(ControllerTest, WritePropagatesNandTransportErrors) {
   ASSERT_NE(command, nullptr);
   EXPECT_EQ(command->status, NvmeStatus::INTERNAL_ERROR);
   EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
-  ReleaseCommand(*payload);
+  ReleaseExtension<NvmeCommandExtension>(*payload);
 }
 
 // Write should translate NAND failure to write fault status.
@@ -310,7 +268,7 @@ TEST(ControllerTest, WriteTranslatesNandFailureToWriteFault) {
   harness.nand_.completion_status_ = NandStatus::FAIL;
 
   constexpr uint8_t kWriteFaultPattern = 0x01;
-  auto data = std::vector<uint8_t>(kPageSizeBytes, kWriteFaultPattern);
+  auto data = MakePatternBuffer(kPageSizeBytes, kWriteFaultPattern);
   auto payload = MakePayload(tlm::TLM_WRITE_COMMAND, data);
   AttachCommand(*payload, NvmeOpcode::WRITE);
 
@@ -323,7 +281,7 @@ TEST(ControllerTest, WriteTranslatesNandFailureToWriteFault) {
   ASSERT_NE(command, nullptr);
   EXPECT_EQ(command->status, NvmeStatus::WRITE_FAULT);
   EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
-  ReleaseCommand(*payload);
+  ReleaseExtension<NvmeCommandExtension>(*payload);
 }
 
 // Read with missing data buffer should set invalid field status.
@@ -341,14 +299,14 @@ TEST(ControllerTest, ReadMissingDataBufferTriggersInvalidField) {
   ASSERT_NE(command, nullptr);
   EXPECT_EQ(command->status, NvmeStatus::INVALID_FIELD);
   EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
-  ReleaseCommand(*payload);
+  ReleaseExtension<NvmeCommandExtension>(*payload);
 }
 
 // Read with zero length should set invalid field status.
 TEST(ControllerTest, ReadZeroLengthTriggersInvalidField) {
   auto harness = ControllerHarness(MakeGeometry());
 
-  auto buffer = std::vector<uint8_t>(kPageSizeBytes);
+  auto buffer = MakePatternBuffer(kPageSizeBytes, 0x00);
   auto payload =
       MakePayload(tlm::TLM_READ_COMMAND, buffer.data(), 0, buffer.size());
   AttachCommand(*payload, NvmeOpcode::READ);
@@ -360,14 +318,14 @@ TEST(ControllerTest, ReadZeroLengthTriggersInvalidField) {
   ASSERT_NE(command, nullptr);
   EXPECT_EQ(command->status, NvmeStatus::INVALID_FIELD);
   EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
-  ReleaseCommand(*payload);
+  ReleaseExtension<NvmeCommandExtension>(*payload);
 }
 
 // Read beyond capacity should set capacity exceeded status.
 TEST(ControllerTest, ReadCapacityExceededSetsNvmeStatus) {
   auto harness = ControllerHarness(MakeGeometry());
 
-  auto buffer = std::vector<uint8_t>(kPageSizeBytes);
+  auto buffer = MakePatternBuffer(kPageSizeBytes, 0x00);
   auto payload = MakePayload(tlm::TLM_READ_COMMAND, buffer);
   auto* command = AttachCommand(*payload, NvmeOpcode::READ, /*lba=*/1);
   command->length = 1;
@@ -379,7 +337,7 @@ TEST(ControllerTest, ReadCapacityExceededSetsNvmeStatus) {
   ASSERT_NE(command_after, nullptr);
   EXPECT_EQ(command_after->status, NvmeStatus::CAPACITY_EXCEEDED);
   EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
-  ReleaseCommand(*payload);
+  ReleaseExtension<NvmeCommandExtension>(*payload);
 }
 
 // Read should propagate transport errors from NAND.
@@ -387,7 +345,7 @@ TEST(ControllerTest, ReadPropagatesNandTransportErrors) {
   auto harness = ControllerHarness(MakeGeometry());
   harness.nand_.next_response_status_ = tlm::TLM_GENERIC_ERROR_RESPONSE;
 
-  auto buffer = std::vector<uint8_t>(kPageSizeBytes);
+  auto buffer = MakePatternBuffer(kPageSizeBytes, 0x00);
   auto payload = MakePayload(tlm::TLM_READ_COMMAND, buffer);
   AttachCommand(*payload, NvmeOpcode::READ);
 
@@ -398,7 +356,7 @@ TEST(ControllerTest, ReadPropagatesNandTransportErrors) {
   ASSERT_NE(command, nullptr);
   EXPECT_EQ(command->status, NvmeStatus::INTERNAL_ERROR);
   EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
-  ReleaseCommand(*payload);
+  ReleaseExtension<NvmeCommandExtension>(*payload);
 }
 
 // Read should translate NAND failure to internal error status.
@@ -406,7 +364,7 @@ TEST(ControllerTest, ReadTranslatesNandFailureToInternalError) {
   auto harness = ControllerHarness(MakeGeometry());
   harness.nand_.completion_status_ = NandStatus::FAIL;
 
-  auto buffer = std::vector<uint8_t>(kPageSizeBytes);
+  auto buffer = MakePatternBuffer(kPageSizeBytes, 0x00);
   auto payload = MakePayload(tlm::TLM_READ_COMMAND, buffer);
   AttachCommand(*payload, NvmeOpcode::READ);
 
@@ -419,7 +377,7 @@ TEST(ControllerTest, ReadTranslatesNandFailureToInternalError) {
   ASSERT_NE(command, nullptr);
   EXPECT_EQ(command->status, NvmeStatus::INTERNAL_ERROR);
   EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
-  ReleaseCommand(*payload);
+  ReleaseExtension<NvmeCommandExtension>(*payload);
 }
 
 }  // namespace toyssd::test
