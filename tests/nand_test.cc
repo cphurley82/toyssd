@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT
 //
 // File: nand_test.cc
-// Brief: Tests NAND PROGRAM, ERASE, and READ failure semantics after erase.
+// Brief: Exercises NAND PROGRAM/READ/ERASE success paths plus every
+//        TLM_GENERIC_ERROR_RESPONSE edge case exposed by the model.
 
 #include <gtest/gtest.h>
 
@@ -13,100 +14,223 @@
 
 namespace toyssd::test {
 
+namespace {
+
+// Creates a geometry with the requested page size; other fields use the
+// defaults from NandGeometry (1 die, 128 blocks/die, 64 pages/block, etc.).
+NandGeometry MakeGeometry(uint32_t page_size = 4096) {
+  auto geometry = NandGeometry();
+  geometry.page_size_bytes = page_size;
+  return geometry;
+}
+
+// Allocates and initializes a payload with the provided buffer metadata.
+std::unique_ptr<tlm::tlm_generic_payload> MakePayload(
+    tlm::tlm_command command, uint8_t* data_ptr, size_t data_length,
+    size_t streaming_width
+) {
+  auto payload = std::make_unique<tlm::tlm_generic_payload>();
+  payload->set_command(command);
+  payload->set_data_ptr(data_ptr);
+  payload->set_data_length(data_length);
+  payload->set_streaming_width(streaming_width);
+  payload->set_byte_enable_ptr(nullptr);
+  payload->set_response_status(tlm::TLM_INCOMPLETE_RESPONSE);
+  return payload;
+}
+
+// Allocates and initializes a payload with the provided buffer.
+std::unique_ptr<tlm::tlm_generic_payload> MakePayload(
+    tlm::tlm_command command, std::vector<uint8_t>& buffer
+) {
+  return MakePayload(command, buffer.data(), buffer.size(), buffer.size());
+}
+
+// Allocates a NAND command extension with the relevant addressing metadata.
+std::unique_ptr<NandCommandExtension> MakeExtension(
+    NandCommandType type, uint8_t die = 0, uint16_t block = 0,
+    uint16_t page = 0, size_t length_bytes = 0
+) {
+  auto ext = std::make_unique<NandCommandExtension>();
+  ext->command_type = type;
+  ext->die = die;
+  ext->block = block;
+  ext->page = page;
+  ext->length_bytes = static_cast<uint32_t>(length_bytes);
+  return ext;
+}
+
+// Releases the extension currently attached to the payload.
+void ReleaseExtension(tlm::tlm_generic_payload& payload) {
+  NandCommandExtension* released = nullptr;
+  payload.release_extension(released);
+  delete released;
+}
+
+}  // namespace
+
+// Verifies basic program → erase → read behavior, ensuring erased data cannot
+// be retrieved and yields the correct error path.
 TEST(NandTest, EraseClearsStoredData) {
-    NandGeometry geometry;
+    auto geometry = NandGeometry();
     geometry.dies = 1;
     geometry.blocks_per_die = 1;
     geometry.pages_per_block = 2;
     geometry.page_size_bytes = 4096;
 
-    Nand nand("nand", geometry);
+    auto nand = Nand("nand", geometry);
 
-    std::vector<uint8_t> page(4096, 0x55);
+    auto page = std::vector<uint8_t>(4096, 0x55);
 
-    tlm::tlm_generic_payload program_payload;
-    program_payload.set_command(tlm::TLM_WRITE_COMMAND);
-    program_payload.set_data_ptr(page.data());
-    program_payload.set_data_length(page.size());
-    program_payload.set_streaming_width(page.size());
-    program_payload.set_response_status(tlm::TLM_INCOMPLETE_RESPONSE);
-
-    auto program_ext = std::make_unique<NandCommandExtension>();
-    program_ext->command_type = NandCommandType::PROGRAM;
-    program_ext->die = 0;
-    program_ext->block = 0;
-    program_ext->page = 0;
-    program_ext->length_bytes = page.size();
-    program_payload.set_extension(program_ext.get());
+    auto program_payload = MakePayload(tlm::TLM_WRITE_COMMAND, page);
+    auto program_ext =
+        MakeExtension(NandCommandType::PROGRAM, 0, 0, 0, page.size());
+    program_payload->set_extension(program_ext.get());
     program_ext.release();
 
-    sc_core::sc_time delay = sc_core::SC_ZERO_TIME;
-    nand.b_transport(program_payload, delay);
-    EXPECT_EQ(program_payload.get_response_status(), tlm::TLM_OK_RESPONSE);
+    auto delay = sc_core::SC_ZERO_TIME;
+    nand.b_transport(*program_payload, delay);
+    EXPECT_EQ(program_payload->get_response_status(), tlm::TLM_OK_RESPONSE);
 
-    auto* program_after = program_payload.get_extension<NandCommandExtension>();
+    auto* program_after = program_payload->get_extension<NandCommandExtension>();
     ASSERT_NE(program_after, nullptr);
     EXPECT_EQ(program_after->status, NandStatus::SUCCESS);
-    NandCommandExtension* released_program = nullptr;
-    program_payload.release_extension(released_program);
-    if (released_program != nullptr) {
-      program_ext.reset(released_program);
-    }
+    ReleaseExtension(*program_payload);
 
     // Issue erase command
-    tlm::tlm_generic_payload erase_payload;
-    erase_payload.set_command(tlm::TLM_IGNORE_COMMAND);
-    erase_payload.set_data_ptr(nullptr);
-    erase_payload.set_data_length(0);
-    erase_payload.set_response_status(tlm::TLM_INCOMPLETE_RESPONSE);
-
-    auto erase_ext = std::make_unique<NandCommandExtension>();
-    erase_ext->command_type = NandCommandType::ERASE;
-    erase_ext->die = 0;
-    erase_ext->block = 0;
-    erase_ext->page = 0;
-    erase_payload.set_extension(erase_ext.get());
+    auto erase_payload = MakePayload(tlm::TLM_IGNORE_COMMAND, nullptr, 0, 0);
+    auto erase_ext = MakeExtension(NandCommandType::ERASE);
+    erase_payload->set_extension(erase_ext.get());
     erase_ext.release();
 
-    nand.b_transport(erase_payload, delay);
-    EXPECT_EQ(erase_payload.get_response_status(), tlm::TLM_OK_RESPONSE);
-    auto* erase_after = erase_payload.get_extension<NandCommandExtension>();
+    nand.b_transport(*erase_payload, delay);
+    EXPECT_EQ(erase_payload->get_response_status(), tlm::TLM_OK_RESPONSE);
+    auto* erase_after = erase_payload->get_extension<NandCommandExtension>();
     ASSERT_NE(erase_after, nullptr);
     EXPECT_EQ(erase_after->status, NandStatus::SUCCESS);
-    NandCommandExtension* released_erase = nullptr;
-    erase_payload.release_extension(released_erase);
-    if (released_erase != nullptr) {
-      erase_ext.reset(released_erase);
-    }
+    ReleaseExtension(*erase_payload);
 
     // Attempt read and expect failure since data was erased.
-    std::vector<uint8_t> read_buffer(4096);
-    tlm::tlm_generic_payload read_payload;
-    read_payload.set_command(tlm::TLM_READ_COMMAND);
-    read_payload.set_data_ptr(read_buffer.data());
-    read_payload.set_data_length(read_buffer.size());
-    read_payload.set_streaming_width(read_buffer.size());
-    read_payload.set_response_status(tlm::TLM_INCOMPLETE_RESPONSE);
-
-    auto read_ext = std::make_unique<NandCommandExtension>();
-    read_ext->command_type = NandCommandType::READ;
-    read_ext->die = 0;
-    read_ext->block = 0;
-    read_ext->page = 0;
-    read_ext->length_bytes = read_buffer.size();
-    read_payload.set_extension(read_ext.get());
+    auto read_buffer = std::vector<uint8_t>(4096);
+    auto read_payload = MakePayload(tlm::TLM_READ_COMMAND, read_buffer);
+    auto read_ext =
+        MakeExtension(NandCommandType::READ, 0, 0, 0, read_buffer.size());
+    read_payload->set_extension(read_ext.get());
     read_ext.release();
 
-    nand.b_transport(read_payload, delay);
-    EXPECT_EQ(read_payload.get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
-    auto* read_after = read_payload.get_extension<NandCommandExtension>();
+    nand.b_transport(*read_payload, delay);
+    EXPECT_EQ(
+        read_payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE
+    );
+    auto* read_after = read_payload->get_extension<NandCommandExtension>();
     ASSERT_NE(read_after, nullptr);
     EXPECT_EQ(read_after->status, NandStatus::FAIL);
-    NandCommandExtension* released_read = nullptr;
-    read_payload.release_extension(released_read);
-    if (released_read != nullptr) {
-      read_ext.reset(released_read);
-    }
+    ReleaseExtension(*read_payload);
+}
+
+// Missing command metadata should immediately return a generic error.
+TEST(NandTest, MissingExtensionReturnsError) {
+    auto geometry = MakeGeometry();
+    auto nand = Nand("nand_missing_ext", geometry);
+
+    auto buffer = std::vector<uint8_t>(geometry.page_size_bytes, 0xAB);
+
+    auto payload = MakePayload(tlm::TLM_WRITE_COMMAND, buffer);
+
+    auto delay = sc_core::SC_ZERO_TIME;
+    nand.b_transport(*payload, delay);
+    EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
+}
+
+// Commands other than PROGRAM/READ/ERASE should be rejected.
+TEST(NandTest, UnsupportedCommandTypeReturnsError) {
+    auto geometry = MakeGeometry();
+    auto nand = Nand("nand_unsupported_cmd", geometry);
+
+    auto buffer = std::vector<uint8_t>(geometry.page_size_bytes, 0x11);
+
+    auto payload = MakePayload(tlm::TLM_IGNORE_COMMAND, buffer);
+
+    auto ext = MakeExtension(static_cast<NandCommandType>(0xFF));
+    payload->set_extension(ext.get());
+    ext.release();
+
+    auto delay = sc_core::SC_ZERO_TIME;
+    nand.b_transport(*payload, delay);
+    EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
+    auto* after = payload->get_extension<NandCommandExtension>();
+    ASSERT_NE(after, nullptr);
+    EXPECT_EQ(after->status, NandStatus::FAIL);
+    ReleaseExtension(*payload);
+}
+
+// PROGRAM must have a data buffer; ensure NULL data fails.
+TEST(NandTest, ProgramWithoutDataBufferFails) {
+    auto geometry = MakeGeometry();
+    auto nand = Nand("nand_program_missing_data", geometry);
+
+    auto payload = MakePayload(
+        tlm::TLM_WRITE_COMMAND, nullptr, geometry.page_size_bytes,
+        geometry.page_size_bytes
+    );
+
+    auto ext =
+        MakeExtension(NandCommandType::PROGRAM, 0, 0, 0, geometry.page_size_bytes);
+    payload->set_extension(ext.get());
+    ext.release();
+
+    auto delay = sc_core::SC_ZERO_TIME;
+    nand.b_transport(*payload, delay);
+    EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
+    auto* after = payload->get_extension<NandCommandExtension>();
+    ASSERT_NE(after, nullptr);
+    EXPECT_EQ(after->status, NandStatus::FAIL);
+    ReleaseExtension(*payload);
+}
+
+// READ must have a destination buffer; ensure NULL buffer fails.
+TEST(NandTest, ReadWithoutDestinationBufferFails) {
+    auto geometry = MakeGeometry();
+    auto nand = Nand("nand_read_missing_buffer", geometry);
+
+    auto payload = MakePayload(
+        tlm::TLM_READ_COMMAND, nullptr, geometry.page_size_bytes,
+        geometry.page_size_bytes
+    );
+
+    auto ext = MakeExtension(NandCommandType::READ);
+    payload->set_extension(ext.get());
+    ext.release();
+
+    auto delay = sc_core::SC_ZERO_TIME;
+    nand.b_transport(*payload, delay);
+    EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
+    auto* after = payload->get_extension<NandCommandExtension>();
+    ASSERT_NE(after, nullptr);
+    EXPECT_EQ(after->status, NandStatus::FAIL);
+    ReleaseExtension(*payload);
+}
+
+// READ against an empty page should return FAIL status + generic error.
+TEST(NandTest, ReadMissingPageFails) {
+    auto geometry = MakeGeometry();
+    auto nand = Nand("nand_read_missing_page", geometry);
+
+    auto buffer = std::vector<uint8_t>(geometry.page_size_bytes);
+
+    auto payload = MakePayload(tlm::TLM_READ_COMMAND, buffer);
+
+    auto ext = MakeExtension(NandCommandType::READ);
+    payload->set_extension(ext.get());
+    ext.release();
+
+    auto delay = sc_core::SC_ZERO_TIME;
+    nand.b_transport(*payload, delay);
+    EXPECT_EQ(payload->get_response_status(), tlm::TLM_GENERIC_ERROR_RESPONSE);
+    auto* after = payload->get_extension<NandCommandExtension>();
+    ASSERT_NE(after, nullptr);
+    EXPECT_EQ(after->status, NandStatus::FAIL);
+    ReleaseExtension(*payload);
 }
 
 }  // namespace toyssd::test
