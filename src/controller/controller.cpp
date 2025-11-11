@@ -7,6 +7,7 @@
 //        and LBA -> Nand mapping.
 
 #include <algorithm>
+#include <stdexcept>
 
 #include "toyssd/ssd_controller.hpp"
 
@@ -22,6 +23,19 @@ Controller::Controller(const sc_core::sc_module_name& name,
       host_socket("host_socket"),
       nand_socket("nand_socket"),
       geometry_(geometry) {
+  if (geometry_.dies == 0U) {
+    throw std::invalid_argument("Controller requires at least one die");
+  }
+  if (geometry_.blocks_per_die == 0U) {
+    throw std::invalid_argument("Controller requires blocks_per_die > 0");
+  }
+  if (geometry_.pages_per_block == 0U) {
+    throw std::invalid_argument("Controller requires pages_per_block > 0");
+  }
+  if (geometry_.page_size_bytes == 0U) {
+    throw std::invalid_argument("Controller requires page_size_bytes > 0");
+  }
+
   logical_blocks_per_page_ =
       std::max(1U, geometry_.page_size_bytes / kLogicalBlockSizeBytes);
   host_socket.register_b_transport(this, &Controller::b_transport);
@@ -96,15 +110,13 @@ void Controller::handle_write(tlm::tlm_generic_payload& payload,
     payload.set_response_status(tlm::TLM_OK_RESPONSE);
   }
 
-  NandCommandExtension* released = nullptr;
-  nand_payload.release_extension(released);
-  if (released != nullptr) {
-    if (released->status != NandStatus::SUCCESS) {
-      command.status = NvmeStatus::WRITE_FAULT;
-      payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
-    }
-    delete released;
+  const auto* nand_result = nand_payload.get_extension<NandCommandExtension>();
+  if (nand_result != nullptr && nand_result->status != NandStatus::SUCCESS) {
+    command.status = NvmeStatus::WRITE_FAULT;
+    payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
   }
+
+  nand_payload.release_extension<NandCommandExtension>();
 }
 
 void Controller::handle_read(tlm::tlm_generic_payload& payload,
@@ -151,15 +163,13 @@ void Controller::handle_read(tlm::tlm_generic_payload& payload,
     payload.set_response_status(tlm::TLM_OK_RESPONSE);
   }
 
-  NandCommandExtension* released = nullptr;
-  nand_payload.release_extension(released);
-  if (released != nullptr) {
-    if (released->status != NandStatus::SUCCESS) {
-      command.status = NvmeStatus::INTERNAL_ERROR;
-      payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
-    }
-    delete released;
+  const auto* nand_result = nand_payload.get_extension<NandCommandExtension>();
+  if (nand_result != nullptr && nand_result->status != NandStatus::SUCCESS) {
+    command.status = NvmeStatus::INTERNAL_ERROR;
+    payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
   }
+
+  nand_payload.release_extension<NandCommandExtension>();
 }
 
 NandPhysicalAddress Controller::map_lba(uint64_t lba) const {
@@ -170,12 +180,6 @@ NandPhysicalAddress Controller::map_lba(uint64_t lba) const {
       geometry_.pages_per_block;
 
   NandPhysicalAddress address;
-  if (pages_per_die == 0U) {
-    address.die = 0;
-    address.block = 0;
-    address.page = 0;
-    return address;
-  }
   address.die = static_cast<uint32_t>(page_index / pages_per_die);
   const uint64_t die_local_page = page_index % pages_per_die;
   address.block =
