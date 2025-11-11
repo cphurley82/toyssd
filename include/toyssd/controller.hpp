@@ -1,7 +1,7 @@
 // Copyright toyssd contributors
 // SPDX-License-Identifier: MIT
 //
-// File: ssd_controller.hpp
+// File: controller.hpp
 // Brief: SystemC Controller model bridging NVMe-like host commands to a
 //        NAND interface. Performs address mapping and forwards
 //        tlm_generic_payloads with NandCommandExtension.
@@ -27,8 +27,8 @@ namespace toyssd {
 
 class Controller : public sc_core::sc_module {
  public:
-  tlm_utils::simple_target_socket<Controller> host_socket;
-  tlm_utils::simple_initiator_socket<Controller> nand_socket;
+  tlm_utils::simple_target_socket<Controller> host_socket_;
+  tlm_utils::simple_initiator_socket<Controller> nand_socket_;
 
   Controller(const sc_core::sc_module_name& name, NandGeometry geometry);
 

@@ -478,7 +478,7 @@ toyssd/
 │   └── nand/
 ├── include/
 │   ├── toyssd/host.hpp
-│   ├── toyssd/ssd_controller.hpp
+│   ├── toyssd/controller.hpp
 │   └── toyssd/nand.hpp
 ├── tests/
 │   ├── host_test.cc

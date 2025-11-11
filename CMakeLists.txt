@@ -169,7 +169,7 @@ set(TOYSSD_HEADERS
     include/toyssd/geometry.hpp
     include/toyssd/host.hpp
     include/toyssd/nand.hpp
-    include/toyssd/ssd_controller.hpp
+    include/toyssd/controller.hpp
 )
 
 # Primary library sources grouped by subsystem.
