@@ -84,11 +84,11 @@ Configuration
 Policy
 
 - Run coverage only on Linux to save CI minutes and avoid toolchain variance.
-- Use realistic-but-achievable gates (currently 60% C++ lines / 60% Python lines) and ratchet upward as we add tests.
+- Use realistic-but-achievable gates (currently 90% C++ lines / 60% Python lines) and ratchet upward as we add tests.
 
 Implementation (GitHub Actions)
 - Job `docker-coverage` in [.github/workflows/ci.yml](../.github/workflows/ci.yml) runs on `ubuntu-latest` inside the dev container.
-- Steps: checkout → build container → `invoke bootstrap` + `invoke coverage --fail-under-cpp 60 --fail-under-python 60`.
+- Steps: checkout → build container → `invoke bootstrap` + `invoke coverage --fail-under-cpp 90 --fail-under-python 60`.
 - Artifacts `coverage/cpp/` and `coverage/python/` are uploaded for inspection.
 - macOS jobs skip coverage to avoid redundant `gcovr` runs and to match the user requirement that Linux CI is the single source for coverage gating.
 
