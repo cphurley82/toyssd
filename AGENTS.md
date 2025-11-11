@@ -91,7 +91,7 @@ invoke test
 
 ## 6) Code style, formatting & linting
 
-- **C++ / SystemC:** `clang-format`, `clang-tidy`, `cpplint`, and strict compiler warnings  
+- **C++ / SystemC:** `clang-format`, `clang-tidy`, `cpplint`, and strict compiler warnings. Follow the [Google C++ Style Guide](https://google.github.io/styleguide/cppguide.html) naming/structuring rules wherever practical (e.g., `CamelCase` types, snake_case functions, trailing underscores for member data).  
 - **Python:** `ruff` (formatter + linter; configured in [pyproject.toml](./pyproject.toml))  
 - **Markdown:** `pymarkdownlnt` (linter for documentation; configured in [.pymarkdown.json](./.pymarkdown.json))  
 
