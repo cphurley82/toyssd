@@ -7,6 +7,7 @@
 //        and LBA -> Nand mapping.
 
 #include <algorithm>
+#include <memory>
 #include <stdexcept>
 
 #include "toyssd/controller.hpp"
@@ -92,7 +93,7 @@ void Controller::handle_write(tlm::tlm_generic_payload& payload,
   nand_payload.set_byte_enable_ptr(nullptr);
   nand_payload.set_response_status(tlm::TLM_INCOMPLETE_RESPONSE);
 
-  auto* nand_ext = new NandCommandExtension();
+  auto nand_ext = std::make_unique<NandCommandExtension>();
   nand_ext->command_type = NandCommandType::PROGRAM;
   nand_ext->die = static_cast<uint8_t>(phys.die);
   nand_ext->block = static_cast<uint16_t>(phys.block);
@@ -100,7 +101,7 @@ void Controller::handle_write(tlm::tlm_generic_payload& payload,
   nand_ext->length_bytes = payload.get_data_length();
   nand_ext->pattern = command.pattern;
   nand_ext->pattern_seed = command.pattern_seed;
-  nand_payload.set_extension(nand_ext);
+  nand_payload.set_extension(nand_ext.get());
 
   nand_socket_->b_transport(nand_payload, delay);
   if (nand_payload.get_response_status() != tlm::TLM_OK_RESPONSE) {
@@ -116,7 +117,8 @@ void Controller::handle_write(tlm::tlm_generic_payload& payload,
     payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
   }
 
-  nand_payload.release_extension<NandCommandExtension>();
+  nand_payload.clear_extension<NandCommandExtension>();
+  // unique_ptr scope cleanup frees the extension once detached.
 }
 
 void Controller::handle_read(tlm::tlm_generic_payload& payload,
@@ -145,7 +147,7 @@ void Controller::handle_read(tlm::tlm_generic_payload& payload,
   nand_payload.set_byte_enable_ptr(nullptr);
   nand_payload.set_response_status(tlm::TLM_INCOMPLETE_RESPONSE);
 
-  auto* nand_ext = new NandCommandExtension();
+  auto nand_ext = std::make_unique<NandCommandExtension>();
   nand_ext->command_type = NandCommandType::READ;
   nand_ext->die = static_cast<uint8_t>(phys.die);
   nand_ext->block = static_cast<uint16_t>(phys.block);
@@ -153,7 +155,7 @@ void Controller::handle_read(tlm::tlm_generic_payload& payload,
   nand_ext->length_bytes = payload.get_data_length();
   nand_ext->pattern = command.pattern;
   nand_ext->pattern_seed = command.pattern_seed;
-  nand_payload.set_extension(nand_ext);
+  nand_payload.set_extension(nand_ext.get());
 
   nand_socket_->b_transport(nand_payload, delay);
   if (nand_payload.get_response_status() != tlm::TLM_OK_RESPONSE) {
@@ -169,7 +171,8 @@ void Controller::handle_read(tlm::tlm_generic_payload& payload,
     payload.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
   }
 
-  nand_payload.release_extension<NandCommandExtension>();
+  nand_payload.clear_extension<NandCommandExtension>();
+  // unique_ptr scope cleanup frees the extension once detached.
 }
 
 NandPhysicalAddress Controller::map_lba(uint64_t lba) const {
