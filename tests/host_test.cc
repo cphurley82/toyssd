@@ -12,14 +12,14 @@
 #include <tlm_utils/simple_target_socket.h>  // NOLINT(build/include_order)
 
 #include "toyssd/host.hpp"
+#include "tests/test_geometry.hpp"
+#include "tests/test_payload_helpers.hpp"
 
 namespace toyssd::test {
 
 namespace {
 
-constexpr uint32_t kSectorSizeBytes = 4096;
 constexpr uint8_t kWritePattern = 0x5A;
-constexpr size_t kMisalignedPayloadBytes = 100;
 
 // Minimal controller stand-in that lets tests dictate response behavior.
 class StubController : public sc_core::sc_module {
@@ -57,7 +57,7 @@ struct HostHarness {
   StubController controller;
 
   HostHarness()
-      : host(sc_core::sc_gen_unique_name("host"), kSectorSizeBytes),
+      : host(sc_core::sc_gen_unique_name("host"), kDefaultPageSizeBytes),
         controller(sc_core::sc_gen_unique_name("stub_controller")) {
     host.nvme_socket.bind(controller.host_socket_);
   }
@@ -76,6 +76,7 @@ TEST(HostTest, RejectsEmptyWrite) {
 // Payloads must align to the configured sector size.
 TEST(HostTest, RejectsMisalignedWrite) {
   Host host("host");
+  constexpr size_t kMisalignedPayloadBytes = 100;
   auto data = std::vector<uint8_t>(kMisalignedPayloadBytes);
   EXPECT_THROW(host.submit_write(0, data, DataPattern::SEQUENTIAL_COUNTER),
                std::invalid_argument);
@@ -85,7 +86,7 @@ TEST(HostTest, RejectsMisalignedWrite) {
 TEST(HostTest, WriteSurfacesNvmeFailure) {
   auto harness = HostHarness();
   harness.controller.set_completion_status(NvmeStatus::INTERNAL_ERROR);
-  auto data = std::vector<uint8_t>(kSectorSizeBytes, kWritePattern);
+  auto data = MakePatternBuffer(kDefaultPageSizeBytes, kWritePattern);
   EXPECT_THROW(
       harness.host.submit_write(0, data, DataPattern::SEQUENTIAL_COUNTER),
       std::runtime_error);
@@ -95,7 +96,7 @@ TEST(HostTest, WriteSurfacesNvmeFailure) {
 TEST(HostTest, WritePropagatesTlmErrors) {
   auto harness = HostHarness();
   harness.controller.set_response_status(tlm::TLM_GENERIC_ERROR_RESPONSE);
-  auto data = std::vector<uint8_t>(kSectorSizeBytes, kWritePattern);
+  auto data = MakePatternBuffer(kDefaultPageSizeBytes, kWritePattern);
   EXPECT_THROW(
       harness.host.submit_write(0, data, DataPattern::SEQUENTIAL_COUNTER),
       std::runtime_error);
