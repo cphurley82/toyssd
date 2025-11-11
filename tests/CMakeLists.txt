@@ -18,6 +18,12 @@ target_link_libraries(
         toyssd_core
         GTest::gtest_main
 )
+target_include_directories(
+    toyssd_core_tests
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
 
 # Integrate with CTest via GoogleTest’s discovery. This avoids maintaining
 # a test list by hand and works well with IDEs and CI. Tests are registered

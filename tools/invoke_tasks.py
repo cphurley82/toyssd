@@ -455,13 +455,13 @@ def lint(ctx) -> None:
     cpp_files = " ".join(shlex.quote(path) for path in _iter_cpp_sources())
     config_path = shlex.quote(str(ROOT / ".clang-tidy"))
     build_arg = shlex.quote(str(build_dir))
-    header_filter = shlex.quote(r"^(src|include)/")
+    header_filter = shlex.quote(r"^(src|include|tests)/")
     ctx.run(
         f"clang-tidy -p {build_arg} --config-file={config_path} --header-filter={header_filter} {cpp_files}",
         pty=True,
         env=_compiler_env(),
     )
-    ctx.run("cpplint --recursive include src", pty=True)
+    ctx.run("cpplint --recursive include src tests", pty=True)
     ctx.run(f"{_python()} -m ruff check python", pty=True)
     # Run markdown linting on all documentation files.
     lint_markdown(ctx)
@@ -489,10 +489,22 @@ def clean(ctx) -> None:
 def _iter_sources() -> list[Path]:
     """Return all format-able C++ source files (headers and implementation).
 
-    We scan only the checked-in ``include`` and ``src`` trees to avoid
-    formatting generated code under ``build/``.
+    We scan the checked-in C++ trees (headers, sources, and tests) to avoid
+    touching generated files under ``build/``.
     """
-    return [*Path("include").rglob("*.hpp"), *Path("src").rglob("*.cpp")]
+    globs = (
+        ("include", ("*.h", "*.hpp")),
+        ("src", ("*.c", "*.cc", "*.cpp")),
+        ("tests", ("*.h", "*.hpp", "*.cc", "*.cpp")),
+    )
+    paths: list[Path] = []
+    for root, patterns in globs:
+        base = Path(root)
+        if not base.exists():
+            continue
+        for pattern in patterns:
+            paths.extend(base.rglob(pattern))
+    return paths
 
 
 def _iter_cpp_sources() -> list[str]:
@@ -500,7 +512,14 @@ def _iter_cpp_sources() -> list[str]:
 
     Returned as strings for direct CLI argument concatenation.
     """
-    return [str(path) for path in Path("src").rglob("*.cpp")]
+    roots = [(Path("src"), ("*.c", "*.cc", "*.cpp")), (Path("tests"), ("*.cc", "*.cpp"))]
+    files: list[Path] = []
+    for base, patterns in roots:
+        if not base.exists():
+            continue
+        for pattern in patterns:
+            files.extend(base.rglob(pattern))
+    return [str(path) for path in files]
 
 
 def _iter_markdown_files() -> list[Path]:
