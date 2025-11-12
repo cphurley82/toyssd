@@ -24,7 +24,7 @@ from toyssd.sim import (
 
 class TestExceptions:
     """Test suite for ToySSD exception hierarchy.
-    
+
     These tests verify that exceptions are properly defined and can be
     raised/caught as expected. The exception hierarchy allows users to
     catch specific errors or all ToySSD errors via the base class.
@@ -78,7 +78,7 @@ class TestExceptions:
 
 class TestToySSDStats:
     """Test suite for ToySSDStats data class.
-    
+
     These tests verify stats tracking and derived metrics like write
     amplification. Stats are central to evaluating simulator behavior.
     """
@@ -121,7 +121,7 @@ class TestToySSDStats:
 
 class TestToySSDInitialization:
     """Test suite for ToySSD initialization and configuration.
-    
+
     These tests verify that ToySSD properly initializes with various
     configurations and correctly selects backends.
     """
@@ -162,7 +162,7 @@ class TestToySSDInitialization:
 
 class TestToySSDWorkloadExecution:
     """Test suite for workload execution and event handling.
-    
+
     These tests verify that ToySSD correctly processes workloads,
     records events, updates stats, and manages the visualization.
     """
@@ -172,12 +172,12 @@ class TestToySSDWorkloadExecution:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         workload = Workload.sequential_write(
             start_lba=0, length_gb=0.0001, block_size_kb=4
         )
         sim.run_workload(workload)
-        
+
         stats = sim.get_stats()
         assert stats.total_writes > 0
 
@@ -186,19 +186,17 @@ class TestToySSDWorkloadExecution:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         # Write first
         write = Workload.sequential_write(
             start_lba=0, length_gb=0.0001, block_size_kb=4
         )
         sim.run_workload(write)
-        
+
         # Then read
-        read = Workload.sequential_read(
-            start_lba=0, length_gb=0.0001, block_size_kb=4
-        )
+        read = Workload.sequential_read(start_lba=0, length_gb=0.0001, block_size_kb=4)
         sim.run_workload(read)
-        
+
         stats = sim.get_stats()
         assert stats.total_reads > 0
 
@@ -207,7 +205,7 @@ class TestToySSDWorkloadExecution:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         workload = Workload.sequential_write(
             start_lba=0, length_gb=0.0001, block_size_kb=4
         )
@@ -219,13 +217,13 @@ class TestToySSDWorkloadExecution:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         workload = Workload.sequential_write(
             start_lba=0, length_gb=0.0001, block_size_kb=4
         )
         # submit_io queues but doesn't execute immediately
         sim.submit_io(workload)
-        
+
         # Should record a queue event
         events = sim.drain_events()
         assert len(events) > 0
@@ -236,10 +234,10 @@ class TestToySSDWorkloadExecution:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         # Step without any pending work
         sim.step(100)
-        
+
         events = sim.drain_events()
         # Should have idle event when no work pending
         assert any(e.get("type") == "idle" for e in events)
@@ -249,7 +247,7 @@ class TestToySSDWorkloadExecution:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         with pytest.raises(ValueError, match="duration_ms must be positive"):
             sim.step(-10)
 
@@ -258,7 +256,7 @@ class TestToySSDWorkloadExecution:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         with pytest.raises(ValueError, match="duration_ms must be positive"):
             sim.step(0)
 
@@ -267,16 +265,16 @@ class TestToySSDWorkloadExecution:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         workload = Workload.sequential_write(
             start_lba=0, length_gb=0.0001, block_size_kb=4
         )
         sim.run_workload(workload)
-        
+
         # First drain should return events
         events1 = sim.drain_events()
         assert len(events1) > 0
-        
+
         # Second drain should return empty list
         events2 = sim.drain_events()
         assert len(events2) == 0
@@ -286,15 +284,15 @@ class TestToySSDWorkloadExecution:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         stats1 = sim.get_stats()
         assert stats1.total_writes == 0
-        
+
         workload = Workload.sequential_write(
             start_lba=0, length_gb=0.0001, block_size_kb=4
         )
         sim.run_workload(workload)
-        
+
         stats2 = sim.get_stats()
         assert stats2.total_writes > 0
 
@@ -303,12 +301,12 @@ class TestToySSDWorkloadExecution:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         workload = Workload.sequential_write(
             start_lba=0, length_gb=0.0001, block_size_kb=4
         )
         sim.run_workload(workload)
-        
+
         # Should not raise an error
         sim.shutdown()
 
@@ -317,12 +315,12 @@ class TestToySSDWorkloadExecution:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=True)
         sim = ToySSD(config)
-        
+
         workload = Workload.sequential_write(
             start_lba=0, length_gb=0.0001, block_size_kb=4
         )
         sim.run_workload(workload)
-        
+
         assert sim.viz is not None
         # Visualization should have recorded events
         history = sim.viz.history()
@@ -331,7 +329,7 @@ class TestToySSDWorkloadExecution:
 
 class TestInMemoryBridgeWorkloads:
     """Test suite for _InMemoryBridge workload processing.
-    
+
     These tests verify the in-memory bridge correctly handles various
     workload patterns and error conditions.
     """
@@ -341,12 +339,10 @@ class TestInMemoryBridgeWorkloads:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         # Try to read before writing
-        read = Workload.sequential_read(
-            start_lba=0, length_gb=0.0001, block_size_kb=4
-        )
-        
+        read = Workload.sequential_read(start_lba=0, length_gb=0.0001, block_size_kb=4)
+
         with pytest.raises(CapacityError, match="LBA .* not written before read"):
             sim.run_workload(read)
 
@@ -355,17 +351,15 @@ class TestInMemoryBridgeWorkloads:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         # Write pattern
         write = Workload.sequential_write(
             start_lba=10, length_gb=0.0001, block_size_kb=4
         )
         sim.run_workload(write)
-        
+
         # Read should verify the pattern
-        read = Workload.sequential_read(
-            start_lba=10, length_gb=0.0001, block_size_kb=4
-        )
+        read = Workload.sequential_read(start_lba=10, length_gb=0.0001, block_size_kb=4)
         sim.run_workload(read)  # Should not raise
 
     def test_random_write_workload(self) -> None:
@@ -373,7 +367,7 @@ class TestInMemoryBridgeWorkloads:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         workload = Workload.random_write(
             lba_range=(0, 100),
             io_count=10,
@@ -381,7 +375,7 @@ class TestInMemoryBridgeWorkloads:
             randomness_seed=42,
         )
         sim.run_workload(workload)
-        
+
         stats = sim.get_stats()
         assert stats.total_writes >= 10
 
@@ -390,7 +384,7 @@ class TestInMemoryBridgeWorkloads:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         # Write first
         write = Workload.random_write(
             lba_range=(0, 100),
@@ -399,7 +393,7 @@ class TestInMemoryBridgeWorkloads:
             randomness_seed=42,
         )
         sim.run_workload(write)
-        
+
         # Read with same seed
         read = Workload.random_read(
             lba_range=(0, 50),
@@ -408,18 +402,18 @@ class TestInMemoryBridgeWorkloads:
             randomness_seed=42,
         )
         sim.run_workload(read)
-        
+
         stats = sim.get_stats()
         assert stats.total_reads >= 10
 
     def test_invalid_block_size_raises_command_error(self) -> None:
         """Verify invalid block size raises CommandError."""
         from toyssd.workload import WorkloadKind
-        
+
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         # Create workload with invalid block size
         workload = Workload(
             kind=WorkloadKind.SEQUENTIAL_WRITE,
@@ -428,7 +422,7 @@ class TestInMemoryBridgeWorkloads:
             block_size_kb=0,  # Invalid
             queue_depth=1,
         )
-        
+
         with pytest.raises(CommandError, match="block_size_kb must be positive"):
             sim.run_workload(workload)
 
@@ -437,26 +431,26 @@ class TestInMemoryBridgeWorkloads:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         # Queue a workload
         workload = Workload.sequential_write(
             start_lba=0, length_gb=0.0001, block_size_kb=4
         )
         sim.submit_io(workload)
-        
+
         # Clear queue event
         sim.drain_events()
-        
+
         # Step should process the pending workload
         sim.step(100)
-        
+
         stats = sim.get_stats()
         assert stats.total_writes > 0
 
 
 class TestEventRecording:
     """Test suite for event recording and stats updates.
-    
+
     These tests verify that events are correctly recorded and stats
     are properly updated based on event types.
     """
@@ -466,14 +460,14 @@ class TestEventRecording:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         initial_writes = sim.get_stats().total_writes
-        
+
         workload = Workload.sequential_write(
             start_lba=0, length_gb=0.0001, block_size_kb=4
         )
         sim.run_workload(workload)
-        
+
         final_writes = sim.get_stats().total_writes
         assert final_writes > initial_writes
 
@@ -482,21 +476,19 @@ class TestEventRecording:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         # Write first
         write = Workload.sequential_write(
             start_lba=0, length_gb=0.0001, block_size_kb=4
         )
         sim.run_workload(write)
-        
+
         initial_reads = sim.get_stats().total_reads
-        
+
         # Then read
-        read = Workload.sequential_read(
-            start_lba=0, length_gb=0.0001, block_size_kb=4
-        )
+        read = Workload.sequential_read(start_lba=0, length_gb=0.0001, block_size_kb=4)
         sim.run_workload(read)
-        
+
         final_reads = sim.get_stats().total_reads
         assert final_reads > initial_reads
 
@@ -505,14 +497,14 @@ class TestEventRecording:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         # Multiple writes
         for i in range(3):
             workload = Workload.sequential_write(
                 start_lba=i * 10, length_gb=0.0001, block_size_kb=4
             )
             sim.run_workload(workload)
-        
+
         stats = sim.get_stats()
         # Should have accumulated writes from all workloads
         assert stats.total_writes > 3
@@ -522,14 +514,14 @@ class TestEventRecording:
         geometry = NandGeometry()
         config = SimConfig(nand_geometry=geometry, enable_visualization=False)
         sim = ToySSD(config)
-        
+
         # Manually inject an erase event to test the erase path
         erase_events = [{"type": "erase", "lba": 100}]
         sim._record_events(erase_events)
-        
+
         stats = sim.get_stats()
         assert stats.total_erases == 1
-        
+
         # Verify event was recorded
         events = sim.drain_events()
         assert len(events) == 1

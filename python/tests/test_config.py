@@ -14,7 +14,7 @@ from toyssd import NandGeometry, SimConfig
 
 class TestNandGeometry:
     """Test suite for NandGeometry configuration and property calculations.
-    
+
     These tests ensure that the geometry calculations correctly compute
     derived properties like total capacity, block sizes, and page counts.
     Edge cases verify that the geometry handles various realistic scenarios.
@@ -108,7 +108,7 @@ class TestNandGeometry:
 
 class TestSimConfig:
     """Test suite for SimConfig validation and initialization.
-    
+
     These tests ensure that SimConfig correctly validates user input,
     provides clear error messages for invalid configurations, and
     properly initializes with valid parameters.

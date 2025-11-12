@@ -16,7 +16,7 @@ from toyssd.workload import Workload, WorkloadKind
 
 class TestWorkloadKind:
     """Test suite for WorkloadKind enum.
-    
+
     These tests verify the WorkloadKind enum correctly defines
     all workload types with proper string values.
     """
@@ -45,7 +45,7 @@ class TestWorkloadKind:
 
 class TestWorkloadDataclass:
     """Test suite for Workload dataclass.
-    
+
     These tests verify the Workload dataclass correctly stores
     workload parameters and is properly frozen/slotted.
     """
@@ -60,7 +60,7 @@ class TestWorkloadDataclass:
             queue_depth=1,
             randomness_seed=42,
         )
-        
+
         assert workload.kind == WorkloadKind.SEQUENTIAL_WRITE
         assert workload.start_lba == 100
         assert workload.lba_count == 50
@@ -77,7 +77,7 @@ class TestWorkloadDataclass:
             block_size_kb=4,
             queue_depth=1,
         )
-        
+
         with pytest.raises(AttributeError):
             workload.start_lba = 100  # type: ignore
 
@@ -90,13 +90,13 @@ class TestWorkloadDataclass:
             block_size_kb=4,
             queue_depth=1,
         )
-        
+
         assert workload.randomness_seed is None
 
 
 class TestWorkloadToHostDict:
     """Test suite for to_host_dict serialization.
-    
+
     These tests verify that workloads can be serialized to
     dictionary format for cross-boundary communication.
     """
@@ -106,9 +106,9 @@ class TestWorkloadToHostDict:
         workload = Workload.sequential_write(
             start_lba=0, length_gb=0.001, block_size_kb=4
         )
-        
+
         host_dict = workload.to_host_dict()
-        
+
         assert host_dict["kind"] == "sequential_write"
         assert host_dict["start_lba"] == 0
         assert isinstance(host_dict["lba_count"], int)
@@ -124,9 +124,9 @@ class TestWorkloadToHostDict:
             block_size_kb=4,
             randomness_seed=42,
         )
-        
+
         host_dict = workload.to_host_dict()
-        
+
         assert host_dict["randomness_seed"] == 42
 
     def test_to_host_dict_all_fields(self) -> None:
@@ -139,9 +139,9 @@ class TestWorkloadToHostDict:
             queue_depth=4,
             randomness_seed=123,
         )
-        
+
         host_dict = workload.to_host_dict()
-        
+
         assert "kind" in host_dict
         assert "start_lba" in host_dict
         assert "lba_count" in host_dict
@@ -152,7 +152,7 @@ class TestWorkloadToHostDict:
 
 class TestSequentialWriteFactory:
     """Test suite for sequential_write factory method.
-    
+
     These tests verify the sequential_write factory correctly
     creates workloads with proper LBA count calculations.
     """
@@ -162,7 +162,7 @@ class TestSequentialWriteFactory:
         workload = Workload.sequential_write(
             start_lba=0, length_gb=0.001, block_size_kb=4
         )
-        
+
         assert workload.kind == WorkloadKind.SEQUENTIAL_WRITE
         assert workload.start_lba == 0
         assert workload.lba_count > 0
@@ -174,7 +174,7 @@ class TestSequentialWriteFactory:
         workload = Workload.sequential_write(
             start_lba=100, length_gb=0.01, block_size_kb=4, queue_depth=32
         )
-        
+
         assert workload.queue_depth == 32
 
     def test_sequential_write_lba_count_calculation(self) -> None:
@@ -183,7 +183,7 @@ class TestSequentialWriteFactory:
         workload = Workload.sequential_write(
             start_lba=0, length_gb=1.0, block_size_kb=4
         )
-        
+
         expected_count = int((1.0 * 1024**3) // (4 * 1024))
         assert workload.lba_count == expected_count
 
@@ -192,13 +192,13 @@ class TestSequentialWriteFactory:
         workload = Workload.sequential_write(
             start_lba=0, length_gb=0.0001, block_size_kb=4
         )
-        
+
         assert workload.lba_count >= 0
 
 
 class TestSequentialReadFactory:
     """Test suite for sequential_read factory method.
-    
+
     These tests verify the sequential_read factory correctly
     creates workloads with proper parameters.
     """
@@ -208,7 +208,7 @@ class TestSequentialReadFactory:
         workload = Workload.sequential_read(
             start_lba=0, length_gb=0.001, block_size_kb=4
         )
-        
+
         assert workload.kind == WorkloadKind.SEQUENTIAL_READ
         assert workload.start_lba == 0
         assert workload.lba_count > 0
@@ -220,22 +220,20 @@ class TestSequentialReadFactory:
         workload = Workload.sequential_read(
             start_lba=50, length_gb=0.01, block_size_kb=8, queue_depth=16
         )
-        
+
         assert workload.queue_depth == 16
 
     def test_sequential_read_lba_count_calculation(self) -> None:
         """Verify sequential_read calculates LBA count correctly."""
-        workload = Workload.sequential_read(
-            start_lba=0, length_gb=0.5, block_size_kb=4
-        )
-        
+        workload = Workload.sequential_read(start_lba=0, length_gb=0.5, block_size_kb=4)
+
         expected_count = int((0.5 * 1024**3) // (4 * 1024))
         assert workload.lba_count == expected_count
 
 
 class TestRandomWriteFactory:
     """Test suite for random_write factory method.
-    
+
     These tests verify the random_write factory correctly
     creates workloads with proper parameters.
     """
@@ -245,7 +243,7 @@ class TestRandomWriteFactory:
         workload = Workload.random_write(
             lba_range=(0, 100), io_count=10, block_size_kb=4
         )
-        
+
         assert workload.kind == WorkloadKind.RANDOM_WRITE
         assert workload.start_lba == 0
         assert workload.lba_count == 10
@@ -261,7 +259,7 @@ class TestRandomWriteFactory:
             block_size_kb=4,
             randomness_seed=42,
         )
-        
+
         assert workload.randomness_seed == 42
 
     def test_random_write_with_custom_queue_depth(self) -> None:
@@ -272,7 +270,7 @@ class TestRandomWriteFactory:
             block_size_kb=4,
             queue_depth=8,
         )
-        
+
         assert workload.queue_depth == 8
 
     def test_random_write_lba_range_start(self) -> None:
@@ -280,7 +278,7 @@ class TestRandomWriteFactory:
         workload = Workload.random_write(
             lba_range=(500, 1000), io_count=10, block_size_kb=4
         )
-        
+
         assert workload.start_lba == 500
 
     def test_random_write_zero_io_count(self) -> None:
@@ -288,14 +286,14 @@ class TestRandomWriteFactory:
         workload = Workload.random_write(
             lba_range=(0, 100), io_count=0, block_size_kb=4
         )
-        
+
         # Should use max(io_count, 1) = 1
         assert workload.lba_count == 1
 
 
 class TestRandomReadFactory:
     """Test suite for random_read factory method.
-    
+
     These tests verify the random_read factory correctly
     creates workloads with proper parameters.
     """
@@ -305,7 +303,7 @@ class TestRandomReadFactory:
         workload = Workload.random_read(
             lba_range=(0, 100), io_count=10, block_size_kb=4
         )
-        
+
         assert workload.kind == WorkloadKind.RANDOM_READ
         assert workload.start_lba == 0
         assert workload.lba_count == 10
@@ -321,7 +319,7 @@ class TestRandomReadFactory:
             block_size_kb=4,
             randomness_seed=99,
         )
-        
+
         assert workload.randomness_seed == 99
 
     def test_random_read_with_custom_queue_depth(self) -> None:
@@ -332,7 +330,7 @@ class TestRandomReadFactory:
             block_size_kb=4,
             queue_depth=16,
         )
-        
+
         assert workload.queue_depth == 16
 
     def test_random_read_lba_range_start(self) -> None:
@@ -340,22 +338,20 @@ class TestRandomReadFactory:
         workload = Workload.random_read(
             lba_range=(200, 500), io_count=10, block_size_kb=4
         )
-        
+
         assert workload.start_lba == 200
 
     def test_random_read_zero_io_count(self) -> None:
         """Verify random_read handles zero io_count with max(io_count, 1)."""
-        workload = Workload.random_read(
-            lba_range=(0, 100), io_count=0, block_size_kb=4
-        )
-        
+        workload = Workload.random_read(lba_range=(0, 100), io_count=0, block_size_kb=4)
+
         # Should use max(io_count, 1) = 1
         assert workload.lba_count == 1
 
 
 class TestBlocksFromGib:
     """Test suite for _blocks_from_gib conversion method.
-    
+
     These tests verify the GiB-to-LBA conversion logic handles
     various inputs correctly and validates edge cases.
     """
@@ -363,7 +359,7 @@ class TestBlocksFromGib:
     def test_blocks_from_gib_one_gb_4kb_blocks(self) -> None:
         """Verify _blocks_from_gib converts 1 GB with 4 KB blocks."""
         count = Workload._blocks_from_gib(1.0, 4)
-        
+
         # 1 GiB = 1024^3 bytes, 4 KB block = 4096 bytes
         expected = int((1.0 * 1024**3) // (4 * 1024))
         assert count == expected
@@ -371,21 +367,21 @@ class TestBlocksFromGib:
     def test_blocks_from_gib_fractional_gb(self) -> None:
         """Verify _blocks_from_gib handles fractional GB values."""
         count = Workload._blocks_from_gib(0.5, 4)
-        
+
         expected = int((0.5 * 1024**3) // (4 * 1024))
         assert count == expected
 
     def test_blocks_from_gib_small_value(self) -> None:
         """Verify _blocks_from_gib handles very small GB values."""
         count = Workload._blocks_from_gib(0.0001, 4)
-        
+
         # Should return a small positive number
         assert count >= 0
 
     def test_blocks_from_gib_large_block_size(self) -> None:
         """Verify _blocks_from_gib handles large block sizes."""
         count = Workload._blocks_from_gib(1.0, 128)
-        
+
         expected = int((1.0 * 1024**3) // (128 * 1024))
         assert count == expected
 
@@ -407,14 +403,14 @@ class TestBlocksFromGib:
     def test_blocks_from_gib_zero_length(self) -> None:
         """Verify _blocks_from_gib handles zero length correctly."""
         count = Workload._blocks_from_gib(0.0, 4)
-        
+
         assert count == 0
 
     def test_blocks_from_gib_rounds_down(self) -> None:
         """Verify _blocks_from_gib floors the result."""
         # Use a length that won't divide evenly
         count = Workload._blocks_from_gib(0.0001, 4)
-        
+
         # Should be floored (int division)
         assert isinstance(count, int)
         assert count >= 0
@@ -422,20 +418,16 @@ class TestBlocksFromGib:
 
 class TestWorkloadIntegration:
     """Integration tests for Workload factory methods.
-    
+
     These tests verify end-to-end workload creation and usage
     in realistic scenarios.
     """
 
     def test_create_full_write_read_workload_pair(self) -> None:
         """Verify creating matching write/read workload pair."""
-        write = Workload.sequential_write(
-            start_lba=0, length_gb=0.01, block_size_kb=4
-        )
-        read = Workload.sequential_read(
-            start_lba=0, length_gb=0.01, block_size_kb=4
-        )
-        
+        write = Workload.sequential_write(start_lba=0, length_gb=0.01, block_size_kb=4)
+        read = Workload.sequential_read(start_lba=0, length_gb=0.01, block_size_kb=4)
+
         # Should have same start and count
         assert write.start_lba == read.start_lba
         assert write.lba_count == read.lba_count
@@ -455,7 +447,7 @@ class TestWorkloadIntegration:
             block_size_kb=4,
             randomness_seed=42,
         )
-        
+
         # Same parameters should produce same workload
         assert workload1.randomness_seed == workload2.randomness_seed
         assert workload1.start_lba == workload2.start_lba
@@ -466,9 +458,9 @@ class TestWorkloadIntegration:
         workload = Workload.sequential_write(
             start_lba=100, length_gb=0.1, block_size_kb=8, queue_depth=4
         )
-        
+
         host_dict = workload.to_host_dict()
-        
+
         # Verify all fields are present and correct
         assert host_dict["kind"] == "sequential_write"
         assert host_dict["start_lba"] == 100
