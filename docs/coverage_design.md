@@ -16,7 +16,7 @@ This document records the implemented approach so future changes stay consistent
 - Build tree: `build/coverage`
 - Artifacts: `coverage/cpp/` and `coverage/python/`
 - Task: `invoke coverage` (see [tools/invoke_tasks.py](../tools/invoke_tasks.py))
-- CI: Run coverage only on the Linux runner; gate on 60% C++ line coverage and 60% Python line coverage. Increase thresholds as coverage improves.
+- CI: Run coverage only on the Linux runner; gate on 60% C++ line coverage and 90% Python line coverage. Increase thresholds as coverage improves.
 
 ## C++ Coverage (CTest/GoogleTest)
 
@@ -84,11 +84,11 @@ Configuration
 Policy
 
 - Run coverage only on Linux to save CI minutes and avoid toolchain variance.
-- Use realistic-but-achievable gates (currently 90% C++ lines / 60% Python lines) and ratchet upward as we add tests.
+- Use realistic-but-achievable gates (currently 90% C++ lines / 90% Python lines) and ratchet upward as we add tests.
 
 Implementation (GitHub Actions)
 - Job `docker-coverage` in [.github/workflows/ci.yml](../.github/workflows/ci.yml) runs on `ubuntu-latest` inside the dev container.
-- Steps: checkout → build container → `invoke bootstrap` + `invoke coverage --fail-under-cpp 90 --fail-under-python 60`.
+- Steps: checkout → build container → `invoke bootstrap` + `invoke coverage --fail-under-cpp 90 --fail-under-python 90`.
 - Artifacts `coverage/cpp/` and `coverage/python/` are uploaded for inspection.
 - macOS jobs skip coverage to avoid redundant `gcovr` runs and to match the user requirement that Linux CI is the single source for coverage gating.
 
@@ -111,8 +111,8 @@ coverage/
 - Separate build trees avoid polluting Debug/ASAN/Release with instrumentation.
 - Prefer line + branch coverage where supported; exclude third-party and SystemC headers.
 - Keep compiler optimizations off (`-O0`) and include debug info (`-g`) for accurate mapping.
-- Maintain 60%/60% gates so regressions fail fast, and increase them as coverage grows.
+- Maintain 90%/90% gates so regressions fail fast, and increase them as coverage grows.
 
 ## Status
 
-The coverage flow is fully wired (CMake option, Invoke task, docs, and CI job). Future changes should keep the dedicated `build/coverage` tree, separate reports, Linux-only CI gating, and revisit the 60%/60% gates as the suite improves.
+The coverage flow is fully wired (CMake option, Invoke task, docs, and CI job). Future changes should keep the dedicated `build/coverage` tree, separate reports, Linux-only CI gating, and revisit the 90%/90% gates as the suite improves.

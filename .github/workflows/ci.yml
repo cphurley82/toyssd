@@ -214,7 +214,7 @@ jobs:
           docker run --rm -u root \
             -v "${{ github.workspace }}":/workspaces/toyssd \
             toyssd-dev:coverage \
-            bash -lc "cd /workspaces/toyssd && invoke bootstrap && invoke coverage --fail-under-cpp 90 --fail-under-python 60"
+            bash -lc "cd /workspaces/toyssd && invoke bootstrap && invoke coverage --fail-under-cpp 90 --fail-under-python 90"
 
       - name: Upload coverage artifacts
         if: always()
